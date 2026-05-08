@@ -1,0 +1,3 @@
+/// @/examples/constants.fer
+score-value = 85
+candidates = [`Gemini` `Qwen` `DeepSeek` `AI on Google search`]

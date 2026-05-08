@@ -1,0 +1,22 @@
+/// @/examples/example.fer
+{ candidates score-value } = ./constants
+
+Status = enum { nice pass failed }
+Gender = enum { female male nonbinary ai }
+
+Candidate = struct {
+  id = i32
+  nickname = string
+  username = string
+  gender = Gender
+}
+
+result = score-value {
+  >= 90 { Status.nice }
+  >= 60 { Status.pass }
+  { Status.failed }
+}
+
+print(`{candidates[0]}'s score {score-value}, result is {result}`)
+
+exports { Status Gender Candidate result }
