@@ -78,7 +78,12 @@ impl<'a> Lexer<'a> {
             }
             '=' => {
                 self.advance();
-                Token::Equals
+                if self.current_char == Some('=') {
+                    self.advance();
+                    Token::DoubleEq
+                } else {
+                    Token::Equals
+                }
             }
             '(' => {
                 self.advance();
@@ -131,6 +136,35 @@ impl<'a> Lexer<'a> {
                 Token::StringLit(string_val)
             }
 
+            // operators
+            '>' => {
+                self.advance();
+                if self.current_char == Some('=') {
+                    self.advance();
+                    Token::GreaterEq
+                } else {
+                    Token::Greater
+                }
+            }
+            '<' => {
+                self.advance();
+                if self.current_char == Some('=') {
+                    self.advance();
+                    Token::LessEq
+                } else {
+                    Token::Less
+                }
+            }
+            '!' => {
+                self.advance();
+                if self.current_char == Some('=') {
+                    self.advance();
+                    Token::NotEq
+                } else {
+                    panic!("Unexpected '!' without '='")
+                }
+            }
+
             // Handle Numbers
             char if char.is_ascii_digit() => {
                 let mut num_str = String::new();
@@ -146,11 +180,16 @@ impl<'a> Lexer<'a> {
             }
 
             // Parse Identifiers (kebab-case or PascalCase)
-            char if char.is_alphabetic() || char == '_' => {
+            char if char.is_alphabetic() => {
                 let mut id = String::new();
+                let is_first_upper = char.is_uppercase();
+
                 while let Some(char) = self.current_char {
                     // Fer allows identifiers to contain letters, numbers, and hyphens (-)
                     if char.is_alphanumeric() || char == '-' {
+                        if char == '_' {
+                            panic!("Snake_case is forbidden! Use kebab-case.");
+                        }
                         id.push(char);
                         self.advance();
                     } else {
@@ -158,10 +197,16 @@ impl<'a> Lexer<'a> {
                     }
                 }
 
+                // Variables cannot be all uppercase
+                if !is_first_upper && id.chars().all(|x| x.is_uppercase() && x != '-') {
+                    panic!("ALL_CAPS identifiers are forbidden!");
+                }
+
                 // check if it's a keyword
                 match id.as_str() {
                     "enum" => Token::Enum,
                     "struct" => Token::Struct,
+                    "string" | "i64" | "i32" | "bool" => Token::Identifier(id), // 暂时保留，语义层再处理
                     _ => Token::Identifier(id),
                 }
             }

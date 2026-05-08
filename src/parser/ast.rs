@@ -1,4 +1,5 @@
 // src/parser/ast.rs
+use crate::parser::Token;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Module {
@@ -103,14 +104,15 @@ pub struct MatchArm {
     // >= 90
     pub pattern: Pattern,
     // { Status.nice }
-    pub body: Expression,
+    pub body: Box<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Pattern {
+    // Match a specific value, like 90
     Literal(Literal),
-    // >= 90
-    Operator(Op, Literal),
+    // Matching range, such as >= 90
+    Compare(Token, Literal),
     // { }
     Default,
 }

@@ -202,22 +202,59 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // Expression Entry
+    // Process the basic expression and check if it is followed by a Match block.
     fn parse_expression(&mut self) -> Expression {
+        let mut left = self.parse_primary_expression();
+
+        // If a primary expression is followed by '{', it's a Match Block
+        if self.current_token == Token::LBrace {
+            left = self.parse_match_expression(left);
+        }
+        left
+    }
+
+    fn parse_primary_expression(&mut self) -> Expression {
         match &self.current_token {
-            Token::StringLit(s) => {
-                let res = Expression::Literal(Literal::String(s.clone()));
-                self.advance();
-                res
-            }
-            Token::Number(n) => {
-                let res = Expression::Literal(Literal::Int(*n));
-                self.advance();
-                res
+            Token::StringLit(_) | Token::Number(_) | Token::LBracket => {
+                Expression::Literal(self.parse_literal())
             }
             Token::Identifier(id) => {
-                let res = Expression::Identifier(id.clone());
+                let name = id.clone();
                 self.advance();
-                res
+                // Check if it's a function call: name(...)
+                if self.current_token == Token::LParen {
+                    self.advance();
+                    let mut args = vec![];
+                    if self.current_token != Token::RParen {
+                        args.push(self.parse_expression());
+                        while self.current_token == Token::Comma {
+                            self.advance();
+                            args.push(self.parse_expression());
+                        }
+                    }
+                    self.expect(Token::RParen);
+                    Expression::Call {
+                        callee: Box::new(Expression::Identifier(name)),
+                        args,
+                    }
+                } else {
+                    Expression::Identifier(name)
+                }
+            }
+            _ => panic!("Expected expression, found {:?}", self.current_token),
+        }
+    }
+
+    fn parse_literal(&mut self) -> Literal {
+        match self.current_token.clone() {
+            Token::Number(n) => {
+                self.advance();
+                Literal::Int(n)
+            }
+            Token::StringLit(s) => {
+                self.advance();
+                Literal::String(s)
             }
             Token::LBracket => {
                 self.advance();
@@ -226,9 +263,51 @@ impl<'a> Parser<'a> {
                     elms.push(self.parse_expression());
                 }
                 self.advance();
-                Expression::Literal(Literal::Array(elms))
+                Literal::Array(elms)
             }
-            _ => panic!("Unexpected expression token {:?}", self.current_token),
+            _ => panic!("Expected literal value, found {:?}", self.current_token),
+        }
+    }
+
+    fn parse_match_expression(&mut self, target: Expression) -> Expression {
+        self.expect(Token::LBrace);
+        let mut arms = vec![];
+
+        while self.current_token != Token::RBrace {
+            arms.push(self.parse_match_arm());
+        }
+        self.expect(Token::RBrace);
+
+        Expression::Match {
+            target: Box::new(target),
+            arms,
+        }
+    }
+
+    fn parse_match_arm(&mut self) -> MatchArm {
+        let pattern = match &self.current_token {
+            // Case: Comparison patterns like >= 90
+            Token::Greater | Token::GreaterEq | Token::Less | Token::LessEq | Token::DoubleEq => {
+                let op = self.current_token.clone();
+                self.advance();
+                let val = self.parse_literal();
+                Pattern::Compare(op, val)
+            }
+            // Case: Default branch {}
+            Token::LBrace => Pattern::Default,
+            // Case: Direct value match 90
+            _ => Pattern::Literal(self.parse_literal()),
+        };
+
+        // Parse the body block { ... }
+        // If it's the default arm, we are already at the LBrace
+        self.expect(Token::LBrace);
+        let body = self.parse_expression();
+        self.expect(Token::RBrace);
+
+        MatchArm {
+            pattern,
+            body: Box::new(body),
         }
     }
 }
@@ -337,6 +416,33 @@ x = [
             if let TypeKind::Struct(fields) = kind {
                 assert_eq!(fields[0].name, "id");
                 assert_eq!(fields[0].type_name, "i32");
+            }
+        }
+    }
+
+    #[test]
+    fn test_match_expression() {
+        let source = r#"
+/// @/test.fer
+result = score {
+  >= 90 { `A` }
+  { `F` }
+}"#;
+        let module = parse(source);
+
+        if let Statement::Declaration { name, value, .. } = &module.body[0] {
+            assert_eq!(name, "result");
+            if let Expression::Match { arms, .. } = value {
+                assert_eq!(arms.len(), 2);
+                // Verify first arm: >= 90
+                assert!(matches!(
+                    arms[0].pattern,
+                    Pattern::Compare(Token::GreaterEq, Literal::Int(90))
+                ));
+                // Verify second arm: Default
+                assert!(matches!(arms[1].pattern, Pattern::Default));
+            } else {
+                panic!("Expected Match expression");
             }
         }
     }

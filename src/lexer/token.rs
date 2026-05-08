@@ -37,6 +37,14 @@ pub enum Token {
     // keywords
     Enum,
     Struct,
+    Match,
+
+    Greater,   // >
+    Less,      // <
+    GreaterEq, // >=
+    LessEq,    // <=
+    DoubleEq,  // ==
+    NotEq,     // !=
 
     // End of file
     Eof,
