@@ -121,14 +121,19 @@ impl<'a> Parser<'a> {
         path
     }
 
+    /// Parses a single statement.
+    /// In Fer, a statement can be a Declaration, a Type Definition, or just an Expression.
     fn parse_statement(&mut self) -> Statement {
-        if let Token::Identifier(name) = self.current_token.clone() {
-            self.advance(); // consume identifier
+        match &self.current_token {
+            // Case 1: Potentially a Declaration or Type Definition (name = ...)
+            Token::Identifier(identifier_name) => {
+                let name = identifier_name.clone();
 
-            match self.current_token {
-                // If it's followed by an =
-                // then it's a variable definition or a type definition
-                Token::Equals => {
+                // For now, we'll use a simple "peek-like" logic by checking current token after identifier
+                // Actually, the cleanest way is to check the current_token after advancing past the ID
+                self.advance();
+
+                if self.current_token == Token::Equals {
                     self.advance(); // consume '='
 
                     match self.current_token {
@@ -143,25 +148,37 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
-                }
-                // If it's followed by (), then it's a function call
-                Token::LParen => {
+                } else if self.current_token == Token::LParen {
+                    // It's a function call: print(...)
+                    // We've already advanced past the name, so we reconstruct the call
                     self.advance(); // consume '('
-                    let arg = self.parse_expression();
+                    let mut arguments = vec![];
+                    if self.current_token != Token::RParen {
+                        arguments.push(self.parse_expression());
+                        while self.current_token == Token::Comma {
+                            self.advance();
+                            arguments.push(self.parse_expression());
+                        }
+                    }
                     self.expect(Token::RParen);
 
                     Statement::Expression(Expression::Call {
                         callee: Box::new(Expression::Identifier(name)),
-                        args: vec![arg],
+                        args: arguments,
                     })
+                } else {
+                    // It's just a standalone identifier expression (e.g., just a variable name)
+                    // We return it as an expression statement.
+                    // Note: In a more complex parser, we'd handle binary ops here too.
+                    Statement::Expression(Expression::Identifier(name))
                 }
-                _ => panic!(
-                    "Expected '=' or '(' after identifier, but found {:?}",
-                    self.current_token
-                ),
             }
-        } else {
-            panic!("Expected statement, found {:?}", self.current_token);
+
+            // Case 2: It's an expression statement starting with something else (like a Number or String)
+            _ => {
+                let expression = self.parse_expression();
+                Statement::Expression(expression)
+            }
         }
     }
 
@@ -207,42 +224,82 @@ impl<'a> Parser<'a> {
     fn parse_expression(&mut self) -> Expression {
         let mut left = self.parse_primary_expression();
 
-        // If a primary expression is followed by '{', it's a Match Block
+        // Loop through consecutive binary operations, supporting operations like 1 + 1 * 2, etc.
+        while matches!(
+            self.current_token,
+            Token::Plus | Token::Minus | Token::Star | Token::Slash
+        ) {
+            let op = match self.current_token {
+                Token::Plus => Op::Add,
+                Token::Minus => Op::Sub,
+                Token::Star => Op::Mul,
+                Token::Slash => Op::Div,
+                _ => unreachable!(),
+            };
+            self.advance();
+            let right = self.parse_primary_expression();
+            left = Expression::BinaryOp {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+            };
+        }
+
         if self.current_token == Token::LBrace {
             left = self.parse_match_expression(left);
         }
         left
     }
 
+    /// Primary expressions are the building blocks: literals, IDs, or grouped expressions.
     fn parse_primary_expression(&mut self) -> Expression {
         match &self.current_token {
-            Token::StringLit(_) | Token::Number(_) | Token::LBracket => {
-                Expression::Literal(self.parse_literal())
-            }
-            Token::Identifier(id) => {
-                let name = id.clone();
+            // Strings are always parsed as InterpolatedString for consistency
+            Token::StringLit(raw_content) => {
+                let content = raw_content.clone();
                 self.advance();
-                // Check if it's a function call: name(...)
+                self.parse_interpolated_string(content)
+            }
+
+            // Numbers are literals
+            Token::Number(number_value) => {
+                let value = *number_value;
+                self.advance();
+                Expression::Literal(Literal::Int(value))
+            }
+
+            // Identifiers (when appearing inside an expression)
+            Token::Identifier(identifier_name) => {
+                let name = identifier_name.clone();
+                self.advance();
+
+                // Handle function calls within expressions
                 if self.current_token == Token::LParen {
                     self.advance();
-                    let mut args = vec![];
+                    let mut arguments = vec![];
                     if self.current_token != Token::RParen {
-                        args.push(self.parse_expression());
+                        arguments.push(self.parse_expression());
                         while self.current_token == Token::Comma {
                             self.advance();
-                            args.push(self.parse_expression());
+                            arguments.push(self.parse_expression());
                         }
                     }
                     self.expect(Token::RParen);
                     Expression::Call {
                         callee: Box::new(Expression::Identifier(name)),
-                        args,
+                        args: arguments,
                     }
                 } else {
                     Expression::Identifier(name)
                 }
             }
-            _ => panic!("Expected expression, found {:?}", self.current_token),
+
+            Token::LBracket => Expression::Literal(self.parse_literal()),
+
+            _ => panic!(
+                "Expected primary expression, found {:?}",
+                self.current_token
+            ),
         }
     }
 
@@ -252,9 +309,10 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Literal::Int(n)
             }
-            Token::StringLit(s) => {
+            Token::StringLit(raw) => {
                 self.advance();
-                Literal::String(s)
+
+                Literal::String(raw)
             }
             Token::LBracket => {
                 self.advance();
@@ -267,6 +325,121 @@ impl<'a> Parser<'a> {
             }
             _ => panic!("Expected literal value, found {:?}", self.current_token),
         }
+    }
+
+    /// Real recursive parser for strings. No abbreviations!
+    fn parse_interpolated_string(&mut self, raw_content: String) -> Expression {
+        let processed_content = self.preprocess_multiline_string(raw_content);
+        let mut string_parts = vec![];
+        let mut current_plain_text = String::new();
+        let mut characters = processed_content.chars().peekable();
+
+        while let Some(character) = characters.next() {
+            if character == '{' {
+                // If there's pending plain text, wrap it as a Literal Expression
+                if !current_plain_text.is_empty() {
+                    string_parts.push(Expression::Literal(Literal::String(
+                        current_plain_text.clone(),
+                    )));
+                    current_plain_text.clear();
+                }
+
+                // Extract content inside {} with nested brace support
+                let mut expression_inner_text = String::new();
+                let mut brace_depth = 1;
+                while let Some(next_character) = characters.next() {
+                    if next_character == '{' {
+                        brace_depth += 1;
+                    }
+                    if next_character == '}' {
+                        brace_depth -= 1;
+                        if brace_depth == 0 {
+                            break;
+                        }
+                    }
+                    expression_inner_text.push(next_character);
+                }
+
+                // RECURSIVE SUB-PARSING
+                let sub_source_code = format!(
+                    "/// @/internal/interpolation.fer\n{}",
+                    expression_inner_text
+                );
+                let sub_lexer = Lexer::new(&sub_source_code);
+                let mut sub_parser = Parser::new(sub_lexer);
+                let sub_module = sub_parser.parse_module();
+
+                if let Some(Statement::Expression(parsed_expression)) =
+                    sub_module.body.into_iter().next()
+                {
+                    string_parts.push(parsed_expression);
+                }
+            } else {
+                current_plain_text.push(character);
+            }
+        }
+
+        // Push final remaining text
+        if !current_plain_text.is_empty() {
+            string_parts.push(Expression::Literal(Literal::String(current_plain_text)));
+        }
+
+        Expression::InterpolatedString(string_parts)
+    }
+
+    /// Handles indentation and backslash line continuation
+    fn preprocess_multiline_string(&mut self, raw_content: String) -> String {
+        // Step 1: Backslash Continuation
+        let mut step1_result = String::new();
+        let mut characters = raw_content.chars().peekable();
+        while let Some(character) = characters.next() {
+            if character == '\\' {
+                if let Some('\n') | Some('\r') = characters.peek() {
+                    if characters.peek() == Some(&'\r') {
+                        characters.next();
+                    }
+                    characters.next(); // Consume newline
+                    while characters.peek() == Some(&' ') {
+                        characters.next();
+                    } // Consume leading spaces
+                    continue;
+                }
+            }
+            step1_result.push(character);
+        }
+
+        // Step 2: Indentation Stripping
+        let lines: Vec<&str> = step1_result.split('\n').collect();
+        if lines.len() <= 1 {
+            return step1_result;
+        }
+
+        let last_line = lines.last().unwrap_or(&"");
+        let base_indentation_count = last_line.chars().take_while(|c| *c == ' ').count();
+
+        let mut processed_lines = Vec::new();
+        for (index, line) in lines.iter().enumerate() {
+            if index == 0 && line.trim().is_empty() {
+                continue;
+            }
+            if index == lines.len() - 1
+                && line.len() <= base_indentation_count
+                && line.trim().is_empty()
+            {
+                continue;
+            }
+
+            let stripped_line = if line.len() >= base_indentation_count
+                && line.starts_with(&" ".repeat(base_indentation_count))
+            {
+                &line[base_indentation_count..]
+            } else {
+                line.trim_start()
+            };
+            processed_lines.push(stripped_line);
+        }
+
+        processed_lines.join("\n")
     }
 
     fn parse_match_expression(&mut self, target: Expression) -> Expression {
@@ -443,6 +616,52 @@ result = score {
                 assert!(matches!(arms[1].pattern, Pattern::Default));
             } else {
                 panic!("Expected Match expression");
+            }
+        }
+    }
+
+    #[test]
+    fn test_string_interpolation_ast() {
+        // This test ensures { 1 + 1 } is parsed as a real recursive AST
+        let source_code = r#"
+/// @/test.fer
+message = `Result: { 1 + 1 }`
+"#;
+        let module_ast = parse(source_code);
+
+        if let Statement::Declaration { value, .. } = &module_ast.body[0] {
+            if let Expression::InterpolatedString(string_parts) = value {
+                // Should be: [Literal("Result: "), BinaryOp(1 + 1)]
+                assert_eq!(string_parts.len(), 2);
+
+                // Check the recursive part
+                if let Expression::BinaryOp { op, .. } = &string_parts[1] {
+                    assert_eq!(*op, Op::Add);
+                } else {
+                    panic!("The second part of interpolation should be a BinaryOp(+)!");
+                }
+            } else {
+                panic!("Expected InterpolatedString expression, check your parser routing!");
+            }
+        }
+    }
+
+    #[test]
+    fn test_multiline_indent_stripping() {
+        let source = r#"
+/// @/test.fer
+multiple = `
+  line1
+  line2
+  `
+"#;
+        let module = parse(source);
+        if let Statement::Declaration { value, .. } = &module.body[0] {
+            if let Expression::InterpolatedString(parts) = value {
+                if let Expression::Literal(Literal::String(s)) = &parts[0] {
+                    // It should be exactly "line1\nline2", no leading 2 spaces!
+                    assert_eq!(s, "line1\nline2");
+                }
             }
         }
     }

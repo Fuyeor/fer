@@ -124,16 +124,47 @@ impl<'a> Lexer<'a> {
             // Parse Fer's signature backtick strings: `Hello World`
             '`' => {
                 self.advance(); // Skip opening backtick
-                let mut string_val = String::new();
+                let mut raw = String::new();
+                let mut brace_depth = 0;
+                let mut escaped = false;
+
                 while let Some(ch) = self.current_char {
-                    if ch == '`' {
+                    if escaped {
+                        raw.push(ch);
+                        escaped = false;
+                    } else if ch == '\\' {
+                        escaped = true;
+                        raw.push('\\');
+                    } else if ch == '{' {
+                        brace_depth += 1;
+                        raw.push('{');
+                    } else if ch == '}' {
+                        if brace_depth > 0 {
+                            brace_depth -= 1;
+                        }
+                        raw.push('}');
+                    } else if ch == '`' && brace_depth == 0 {
                         self.advance(); // Skip closing backtick
                         break;
+                    } else {
+                        raw.push(ch);
                     }
-                    string_val.push(ch);
                     self.advance();
                 }
-                Token::StringLit(string_val)
+                Token::StringLit(raw)
+            }
+
+            '+' => {
+                self.advance();
+                Token::Plus
+            }
+            '-' => {
+                self.advance();
+                Token::Minus
+            }
+            '*' => {
+                self.advance();
+                Token::Star
             }
 
             // operators

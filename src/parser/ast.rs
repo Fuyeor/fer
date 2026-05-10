@@ -77,7 +77,10 @@ pub enum Expression {
         fields: Vec<(String, Expression)>,
     },
 
-    // 字符串插值: `score is {score}`
+    // `score is {score}`
+    InterpolatedString(Vec<Expression>),
+
+    // 1 + 2
     BinaryOp {
         left: Box<Expression>,
         op: Op,

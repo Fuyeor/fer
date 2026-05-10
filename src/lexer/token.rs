@@ -27,8 +27,6 @@ pub enum Token {
 
     // .
     Dot,
-    // /
-    Slash,
     // @
     At,
     // ,
@@ -37,7 +35,6 @@ pub enum Token {
     // keywords
     Enum,
     Struct,
-    Match,
 
     Greater,   // >
     Less,      // <
@@ -45,6 +42,15 @@ pub enum Token {
     LessEq,    // <=
     DoubleEq,  // ==
     NotEq,     // !=
+
+    // +
+    Plus,
+    // -
+    Minus,
+    // *
+    Star,
+    // /
+    Slash,
 
     // End of file
     Eof,
