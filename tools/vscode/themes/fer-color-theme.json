@@ -1,0 +1,45 @@
+{
+  "name": "Fer YuePurple",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#1A1B26",
+    "editor.foreground": "#F2F0EA",
+    "activityBar.background": "#AEA4E433",
+    "statusBar.background": "#AEA4E4",
+    "statusBar.foreground": "#1A1B26"
+  },
+  "tokenColors": [
+    {
+      "scope": "keyword.control.fer",
+      "settings": { "foreground": "#AEA4E4", "fontStyle": "bold" }
+    },
+    {
+      "scope": "keyword.operator.logical.fer",
+      "settings": { "foreground": "#78C072" }
+    },
+    {
+      "scope": "keyword.operator.assignment.fer",
+      "settings": { "foreground": "#A99D71" }
+    },
+    {
+      "scope": "entity.name.function.fer",
+      "settings": { "foreground": "#9F8DFF" }
+    },
+    {
+      "scope": "string.quoted.backtick.fer",
+      "settings": { "foreground": "#E3DFD1" }
+    },
+    {
+      "scope": "variable.interpolation.fer",
+      "settings": { "foreground": "#F2F0EA" }
+    },
+    {
+      "scope": "constant.numeric.fer",
+      "settings": { "foreground": "#EEEBE2" }
+    },
+    {
+      "scope": "comment",
+      "settings": { "foreground": "#A99D7188", "fontStyle": "italic" }
+    }
+  ]
+}

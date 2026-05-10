@@ -1,0 +1,45 @@
+{
+  "name": "fer",
+  "displayName": "Fer Analyzer",
+  "description": "Fer Programming Language support for VS Code",
+  "version": "0.0.1",
+  "publisher": "Fuyeor",
+  "icon": "icon.svg",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "fer",
+        "aliases": [
+          "Fer",
+          "fer"
+        ],
+        "extensions": [
+          ".fer",
+          ".fu"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "fer",
+        "scopeName": "source.fer",
+        "path": "./syntaxes/fer.tmLanguage.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "Fer YuePurple",
+        "uiTheme": "vs-dark",
+        "path": "./themes/fer-color-theme.json"
+      }
+    ]
+  }
+}
