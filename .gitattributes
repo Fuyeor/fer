@@ -1,0 +1,5 @@
+*.fer linguist-language=Fer
+*.fu  linguist-language=Fer
+
+*.fer linguist-detectable=true
+*.fu  linguist-detectable=true

@@ -1,0 +1,11 @@
+/// @/examples/function.fer
+
+function1(name: string) -> string {
+  `Hello, {name}!`
+}
+function1(`world`) // "Hello, world!"
+
+function2() -> struct { x = int, y = int } {
+  temp = 1
+  { x = temp, y = 2 }
+}

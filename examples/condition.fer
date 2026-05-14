@@ -1,0 +1,52 @@
+/// @/examples/condition.fer
+x = 1
+
+// Basic comparison
+y1 = (x > 1) // false
+
+// Parentheses clearly define the boundaries of and/or
+y2 = ((x > 1) or (x equals 1)) // true
+
+// not applies to a single comparison
+y3 = (not(x > 1) or (x equals 1)) // true
+
+// not applies to the entire result
+y4 = not((x > 1) or (x equals 1)) // false
+
+uuid4 = `8dd24bce-89c0-41e1-bd2a-4a02ae3735cc`
+uuid4-regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+print(uuid4 {
+  // Equivalent to: (uuid4 equals `UUID`)
+  `UUID` { `It equals the string "UUID"` } 
+  
+  // Equivalent to: (uuid4 contains `UUID`)
+  contains `UUID` { `It contains the string "UUID"` } 
+  
+  // Equivalent to: (uuid4 matches uuid4-regex)
+  matches uuid4-regex { `It’s a UUID` } 
+  
+  { `No match` }
+}) // "It’s a UUID"
+
+ua = `Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)`
+asn = 13414
+
+legitimate-ua = [
+  `Googlebot`
+  `bingbot`
+  `Applebot`
+]
+
+// Because it involves complex validation of multiple variables (ua, asn)
+// Instead of treating ua or asn as the subject, we return a bool for the condition as a whole
+status = (
+  (ua in legitimate-ua) or
+  (asn equals 13414 and ua contains `Googlebot`) or
+  (asn equals 14618 and ua contains `redditbot`)
+) {
+  true { `Allowed bot` }
+  { `Disallowed bot` }
+}
+
+print(status) // "Allowed bot"

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Fer",
+  "scopeName": "source.fer",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#keywords" },
+    { "include": "#operators" },
+    { "include": "#constants" },
+    { "include": "#functions" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.block.fer", "begin": "/\\*", "end": "\\*/" },
+        { "name": "comment.line.double-slash.fer", "match": "//.*" },
+        { "name": "comment.line.triple-slash.fer", "match": "///.*" }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.fer",
+          "match": "\\b(struct|enum|exports|function|await|return)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.logical.fer",
+          "match": "\\b(and|or|not|in|contains|matches|starts|ends|less|more|least|most|equals)\\b"
+        },
+        {
+          "name": "keyword.operator.assignment.fer",
+          "match": "(=|->|=>|==|\\!|\\<|\\>|\\<\\=|\\>\\=)"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.backtick.fer",
+      "begin": "`",
+      "end": "`",
+      "patterns": [
+        {
+          "name": "constant.character.escape.fer",
+          "match": "\\\\."
+        },
+        {
+          "name": "variable.interpolation.fer",
+          "begin": "\\{",
+          "end": "\\}",
+          "patterns": [{ "include": "source.fer" }]
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "match": "\\b([a-z0-9-]+)\\s*(?=\\()",
+          "name": "entity.name.function.fer"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        { "name": "constant.numeric.fer", "match": "\\b[0-9]+\\b" },
+        {
+          "name": "constant.language.boolean.fer",
+          "match": "\\b(true|false|NULL)\\b"
+        }
+      ]
+    }
+  }
+}

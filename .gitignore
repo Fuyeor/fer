@@ -1,0 +1,65 @@
+# ========================
+# Environment variables
+# ========================
+.env
+.env.production
+.env.development
+
+# ========================
+# Dependencies
+# ========================
+
+**/pnpm-lock.yaml
+**/package-lock.json
+**/Cargo.lock
+
+# keep lock files
+!pnpm-lock.yaml
+!Cargo.lock
+
+# ========================
+# Generated files
+# ========================
+
+**/target
+**/node_modules
+
+**/dist
+**/build
+**/generated
+**/public/assets/locale
+
+# ========================
+# Temporiary files
+# ========================
+
+.tmp
+.temp
+.turbo
+
+# python cache
+**/__pycache__
+
+# ========================
+# IDE configuration
+# ========================
+
+.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ========================
+# System files
+# ========================
+
+.DS_Store
+Thumbs.db
