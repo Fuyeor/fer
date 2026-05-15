@@ -1,0 +1,4 @@
+[package]
+name = "infra"
+version.workspace = true
+edition.workspace = true

@@ -1,2 +1,15 @@
+# /Cargo.toml
 [workspace]
-members = ["compiler-rs"]
+members = ["compiler-rs/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+
+# Define dependencies here once for all crates
+[workspace.dependencies]
+infra = { path = "compiler-rs/infra" }
+vfs = { path = "compiler-rs/vfs" }
+syntax = { path = "compiler-rs/syntax" }
+ir = { path = "compiler-rs/ir" }
