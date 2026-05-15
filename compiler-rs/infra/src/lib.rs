@@ -9,4 +9,4 @@ pub mod symbol;
 // This is intentional: infra is the foundation that all other crates depend on.
 pub use diag::{Diagnostic, DiagnosticBag, Severity};
 pub use span::Span;
-pub use symbol::Symbol;
+pub use symbol::{Interner, Symbol};

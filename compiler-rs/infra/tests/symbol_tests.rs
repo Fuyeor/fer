@@ -1,29 +1,46 @@
 // infra/tests/symbol_tests.rs
-use infra::Symbol;
+use infra::Interner;
 
 #[test]
-fn symbol_wraps_u32() {
-    let sym = Symbol::new(42);
-    assert_eq!(sym.0, 42);
-}
-
-#[test]
-fn symbols_with_same_id_are_equal() {
-    let a = Symbol::new(1);
-    let b = Symbol::new(1);
+fn symbol_identity_is_based_on_interned_string() {
+    let mut interner = Interner::new();
+    let a = interner.intern("foo");
+    let b = interner.intern("foo");
+    let c = interner.intern("bar");
     assert_eq!(a, b);
+    assert_ne!(a, c);
 }
 
 #[test]
-fn symbols_with_different_id_are_not_equal() {
-    let a = Symbol::new(1);
-    let b = Symbol::new(2);
-    assert_ne!(a, b);
-}
-
-#[test]
-fn symbol_is_copy() {
-    let a = Symbol::new(10);
+fn symbol_is_copy_and_comparable() {
+    let mut interner = Interner::new();
+    let a = interner.intern("x");
     let b = a;
-    assert_eq!(a, b); // a is still valid because Symbol is Copy
+    let c = interner.intern("y");
+    assert_eq!(a, b);
+    assert_ne!(a, c); // different interned string → different Symbol
+}
+
+#[test]
+fn interner_len_and_empty() {
+    let mut interner = Interner::new();
+    assert!(interner.is_empty());
+    assert_eq!(interner.len(), 0);
+    interner.intern("first");
+    assert_eq!(interner.len(), 1);
+    interner.intern("first"); // duplicate, no change
+    assert_eq!(interner.len(), 1);
+    interner.intern("second");
+    assert_eq!(interner.len(), 2);
+}
+
+#[test]
+fn lookup_after_many_inserts() {
+    let mut interner = Interner::new();
+    let syms: Vec<_> = (0..100)
+        .map(|i| interner.intern(&format!("s{i}")))
+        .collect();
+    for (i, sym) in syms.iter().enumerate() {
+        assert_eq!(interner.lookup(*sym), Some(&format!("s{i}")[..]));
+    }
 }

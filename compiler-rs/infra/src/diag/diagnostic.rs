@@ -13,8 +13,13 @@ pub enum Severity {
 }
 
 /// A single diagnostic entry.
-/// It carries a unique error code, a human-readable message,
-/// and the source location (span) it refers to.
+///
+/// # Error codes
+///
+/// The `code` field uses a human‑readable, URL‑friendly kebab‑case identifier
+/// (e.g. `"unexpected-token"`, `"missing-semicolon"`).  Numeric codes such as
+/// `"E0001"` are intentionally avoided – they are unstable and hard to
+/// remember.  Kebab‑case codes also serve as documentation anchors.
 ///
 /// # Design constraint
 /// Diagnostic must remain a pure value object.
@@ -22,12 +27,11 @@ pub enum Severity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
     pub severity: Severity,
-    /// Machine-readable error code, e.g. "E0001".
+    /// Machine‑readable error code (kebab‑case, e.g. `"type-mismatch"`).
     pub code: &'static str,
-    /// Human-readable explanation.
+    /// Human‑readable explanation.
     pub message: String,
-    /// Primary source span. For multi-span diagnostics, we will later
-    /// add a `labels: Vec<Label>` field; keep it extensible but minimal now.
+    /// Primary source span.
     pub span: Span,
 }
 
