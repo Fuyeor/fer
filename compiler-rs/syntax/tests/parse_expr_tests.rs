@@ -5,7 +5,7 @@ use syntax::{Lexer, Parser};
 
 fn parse_expr(source: &str) -> Vec<CstNode> {
     let mut interner = Interner::new();
-    let mut lexer = Lexer::new(source, &mut interner);
+    let lexer = Lexer::new(source, &mut interner);
     let mut nodes = Vec::new();
     let mut diag = DiagnosticBag::new();
     let mut parser = Parser::new(lexer, &mut nodes, &mut diag, vfs::FileId(0));
@@ -142,4 +142,40 @@ fn parse_call_multi_positional() {
             .iter()
             .any(|n| matches!(n.kind, NodeKind::Call { .. }))
     );
+}
+
+#[test]
+fn parse_condition_comparison_less() {
+    let nodes = parse_expr("x > 1");
+    let _binary = nodes
+        .iter()
+        .find(|n| matches!(n.kind, NodeKind::BinaryOp { .. }))
+        .expect("BinaryOp not found");
+}
+
+#[test]
+fn parse_condition_equals() {
+    let nodes = parse_expr("x equals 1");
+    let _binary = nodes
+        .iter()
+        .find(|n| matches!(n.kind, NodeKind::BinaryOp { .. }))
+        .expect("BinaryOp not found");
+}
+
+#[test]
+fn parse_condition_and_or() {
+    let nodes = parse_expr("(x > 1) or (x equals 1)");
+    let _or_node = nodes
+        .iter()
+        .find(|n| matches!(n.kind, NodeKind::BinaryOp { .. }))
+        .expect("outer or not found");
+}
+
+#[test]
+fn parse_condition_not() {
+    let nodes = parse_expr("not(x > 1)");
+    let _unary = nodes
+        .iter()
+        .find(|n| matches!(n.kind, NodeKind::UnaryOp { .. }))
+        .expect("UnaryOp not found");
 }

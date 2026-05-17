@@ -85,46 +85,129 @@ pub struct OpInfo {
 
 /// Static precedence table for binary operators.
 pub const BINARY_OPS: &[OpInfo] = &[
+    // Logical or
+    OpInfo {
+        kind: TokenKind::Or,
+        prec: 1,
+        assoc: Assoc::Left,
+    },
+    // Logical and
+    OpInfo {
+        kind: TokenKind::And,
+        prec: 2,
+        assoc: Assoc::Left,
+    },
+    // Comparisons (all same precedence, non-associative in theory, but we'll treat as left)
+    // <
     OpInfo {
         kind: TokenKind::Lt,
-        prec: 4,
+        prec: 3,
         assoc: Assoc::Left,
     },
+    // less
+    OpInfo {
+        kind: TokenKind::Less,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // >
     OpInfo {
         kind: TokenKind::Gt,
-        prec: 4,
+        prec: 3,
         assoc: Assoc::Left,
     },
+    // more
+    OpInfo {
+        kind: TokenKind::More,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // <=
     OpInfo {
         kind: TokenKind::LtEq,
-        prec: 4,
+        prec: 3,
         assoc: Assoc::Left,
     },
+    // least
+    OpInfo {
+        kind: TokenKind::Least,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // >=
     OpInfo {
         kind: TokenKind::GtEq,
-        prec: 4,
+        prec: 3,
         assoc: Assoc::Left,
     },
+    // most
+    OpInfo {
+        kind: TokenKind::Most,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // equals
+    OpInfo {
+        kind: TokenKind::Equals,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // contains
+    OpInfo {
+        kind: TokenKind::Contains,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // matches
+    OpInfo {
+        kind: TokenKind::Matches,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // starts
+    OpInfo {
+        kind: TokenKind::Starts,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // ends
+    OpInfo {
+        kind: TokenKind::Ends,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // in
+    OpInfo {
+        kind: TokenKind::In,
+        prec: 3,
+        assoc: Assoc::Left,
+    },
+    // Arithmetic
+    // +
     OpInfo {
         kind: TokenKind::Plus,
         prec: 5,
         assoc: Assoc::Left,
     },
+    // -
     OpInfo {
         kind: TokenKind::Minus,
         prec: 5,
         assoc: Assoc::Left,
     },
+    // *
     OpInfo {
         kind: TokenKind::Star,
         prec: 6,
         assoc: Assoc::Left,
     },
+    // /
     OpInfo {
         kind: TokenKind::Slash,
         prec: 6,
         assoc: Assoc::Left,
     },
+    // %
     OpInfo {
         kind: TokenKind::Percent,
         prec: 6,

@@ -5,7 +5,7 @@ use syntax::{Lexer, Parser};
 
 fn parse_module(source: &str) -> Vec<CstNode> {
     let mut interner = Interner::new();
-    let mut lexer = Lexer::new(source, &mut interner);
+    let lexer = Lexer::new(source, &mut interner);
     let mut nodes = Vec::new();
     let mut diag = DiagnosticBag::new();
     let mut parser = Parser::new(lexer, &mut nodes, &mut diag, vfs::FileId(0));
@@ -49,7 +49,7 @@ fn parse_import_dot_slash() {
 #[test]
 fn parse_export() {
     let nodes = parse_module("exports { io fs }");
-    let export = nodes
+    let _export = nodes
         .iter()
         .find(|n| matches!(n.kind, NodeKind::ExportDecl))
         .expect("ExportDecl not found");
