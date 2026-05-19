@@ -16,7 +16,7 @@ impl<'a> Parser<'a> {
         // --- Postfix / Infix loop ---
         loop {
             let kind = self.current_kind();
-            // Check for postfix operations first (call, field access, index).
+            // Postfix operations (call, field, index, match)
             match kind {
                 TokenKind::LParen => {
                     // Function call: lhs(args)
@@ -31,6 +31,10 @@ impl<'a> Parser<'a> {
                 TokenKind::LBracket => {
                     // Index expression: lhs[index]
                     lhs = self.parse_index(lhs)?;
+                    continue;
+                }
+                TokenKind::LBrace if !self.suppress_match_postfix => {
+                    lhs = self.parse_match_expr(lhs)?;
                     continue;
                 }
                 _ => {}
@@ -67,6 +71,107 @@ impl<'a> Parser<'a> {
         }
 
         Ok(lhs)
+    }
+
+    /// Parse a single match arm: `pattern { body }` or `{ body }` (default).
+    fn parse_match_arm(&mut self) -> Result<NodeId, ParseError> {
+        let start = self.current_span().start;
+        let old_suppress = self.suppress_match_postfix;
+        self.suppress_match_postfix = true;
+        let pattern = if self.current_kind() == TokenKind::LBrace {
+            None
+        } else {
+            Some(self.parse_match_pattern()?)
+        };
+        self.suppress_match_postfix = old_suppress;
+        let body = self.parse_block()?;
+        let span = Span::new(start, self.node_span(body).end);
+        let mut children = Vec::new();
+        if let Some(pat) = pattern {
+            children.push(pat);
+        }
+        children.push(body);
+        Ok(self.push_node(NodeKind::MatchArm { pattern, body }, span, children))
+    }
+
+    /// Parse a match expression: `scrutinee { arm* }`.
+    fn parse_match_expr(&mut self, scrutinee: NodeId) -> Result<NodeId, ParseError> {
+        let start = self.node_span(scrutinee).start;
+        // The caller has already verified that the current token is '{'.
+        self.advance(); // consume '{'
+        let mut arms = Vec::new();
+        while self.current_kind() != TokenKind::RBrace && self.current_kind() != TokenKind::Eof {
+            let arm_id = self.parse_match_arm()?;
+            arms.push(arm_id);
+        }
+        let close_span = self.current_span();
+        self.expect(TokenKind::RBrace)?;
+        let span = Span::new(start, close_span.end);
+        let mut children = vec![scrutinee];
+        for &arm_id in &arms {
+            let arm_node = &self.nodes[arm_id.0 as usize];
+            if let NodeKind::MatchArm { pattern, body } = &arm_node.kind {
+                if let Some(pat) = pattern {
+                    children.push(*pat);
+                }
+                children.push(*body);
+            }
+        }
+        Ok(self.push_node(NodeKind::MatchExpr { scrutinee, arms }, span, children))
+    }
+
+    /// Parse the pattern part of a match arm.
+    /// This can be:
+    /// - A literal value (string, int, float, bool) – implicitly equals
+    /// - A keyword condition (contains, matches, >, <, etc.) with operand
+    /// - A full condition expression in parentheses
+    fn parse_match_pattern(&mut self) -> Result<NodeId, ParseError> {
+        let kind = self.current_kind();
+        match kind {
+            TokenKind::Contains
+            | TokenKind::Less
+            | TokenKind::More
+            | TokenKind::Least
+            | TokenKind::Most
+            | TokenKind::Equals
+            | TokenKind::Matches
+            | TokenKind::Starts
+            | TokenKind::Ends
+            | TokenKind::In
+            | TokenKind::Lt
+            | TokenKind::Gt
+            | TokenKind::LtEq
+            | TokenKind::GtEq => {
+                let op_token = self.current;
+                self.advance(); // consume operator
+                let rhs = if op_token.kind == TokenKind::Matches {
+                    if self.current_kind() != TokenKind::RegexLiteral {
+                        self.lexer.set_regex_mode(false);
+                        return Err(self.error("expected regex literal after matches"));
+                    }
+                    let regex_span = self.current_span();
+                    let node = self.push_node(NodeKind::LitRegex, regex_span, vec![]);
+                    self.advance(); // consume regex token
+                    node
+                } else {
+                    self.parse_expr(0)?
+                };
+                let span = Span::new(op_token.span.start, self.node_span(rhs).end);
+                Ok(self.push_node(
+                    NodeKind::PatternCondition {
+                        op: op_token.span,
+                        rhs,
+                    },
+                    span,
+                    vec![rhs],
+                ))
+            }
+            TokenKind::LParen => self.parse_expr(0),
+            _ => {
+                let value = self.parse_expr(0)?;
+                Ok(value)
+            }
+        }
     }
 
     /// Parse a prefix expression (atom or unary prefix).

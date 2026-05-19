@@ -31,6 +31,7 @@ pub enum NodeKind {
         name: Span,
         fields: Vec<NodeId>,
     },
+    LitRegex,
     EnumDef {
         name: Span,
         variants: Vec<NodeId>,
@@ -51,6 +52,10 @@ pub enum NodeKind {
     NamedArg {
         name: Span,
         value: NodeId,
+    },
+    MatchArm {
+        pattern: Option<NodeId>,
+        body: NodeId,
     },
 
     // ---- Expressions ----
@@ -82,7 +87,7 @@ pub enum NodeKind {
     },
     MatchExpr {
         scrutinee: NodeId,
-        arms: Vec<MatchArm>,
+        arms: Vec<NodeId>,
     },
     ConditionExpr {
         // Condition expression used as a pattern (e.g. `< 18`)
@@ -154,10 +159,4 @@ pub enum ChainStepKind {
 pub enum InterpolatedPart {
     Text(String),
     Expr(NodeId),
-}
-
-#[derive(Debug, Clone)]
-pub struct MatchArm {
-    pub pattern: NodeId,
-    pub body: NodeId,
 }

@@ -13,9 +13,12 @@ pub enum TokenKind {
     // ---- String interpolation (reserved for later) ----
     StringStart, // opening ` (followed by text or expr)
     StringPart,  // plain text inside a string
-    ExprStart,   // { inside a string
-    ExprEnd,     // } inside a string
     StringEnd,   // closing `
+
+    ExprStart, // { inside a string
+    ExprEnd,   // } inside a string
+
+    RegexLiteral, // /pattern/flags
 
     // ---- Identifier ----
     Identifier, // user-defined name

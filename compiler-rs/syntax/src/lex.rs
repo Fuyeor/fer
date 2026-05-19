@@ -20,6 +20,8 @@ pub struct Lexer<'a> {
     state: LexerState,
     /// Track the start of the current token for span calculation.
     token_start: usize,
+    /// true after 'matches' keyword
+    regex_mode: bool,
 }
 
 /// A saved lexer position that can be restored later.
@@ -54,6 +56,21 @@ impl<'a> Lexer<'a> {
             interner,
             state: LexerState::Normal,
             token_start: 0,
+            regex_mode: false,
+        }
+    }
+
+    pub fn set_regex_mode(&mut self, mode: bool) {
+        self.regex_mode = mode;
+    }
+
+    /// Skip whitespace but not comments.
+    pub fn skip_whitespace(&mut self) {
+        while self.pos < self.source.len() {
+            match self.current_char() {
+                ' ' | '\t' | '\n' | '\r' => self.pos += 1,
+                _ => break,
+            }
         }
     }
 
@@ -100,64 +117,84 @@ impl<'a> Lexer<'a> {
 
     // -------------------- Normal mode --------------------
     fn lex_normal(&mut self) -> Token {
-        self.skip_whitespace_and_comments();
-        if self.is_eof() {
-            return self.make_token(TokenKind::Eof, self.pos, self.pos);
-        }
-
-        self.token_start = self.pos;
-        let c = self.current_char();
-
-        match c {
-            '`' => self.lex_string_literal(),
-            '0'..='9' => self.lex_number(),
-            'a'..='z' | 'A'..='Z' | '_' => self.lex_identifier(),
-            // Operators and delimiters
-            '=' => self.single_char_token(TokenKind::Eq),
-            '<' => {
-                self.pos += 1;
-                if self.current_char() == '=' {
-                    self.pos += 1;
-                    self.make_token(TokenKind::LtEq, self.token_start, self.pos)
-                } else {
-                    self.make_token(TokenKind::Lt, self.token_start, self.pos)
-                }
+        loop {
+            self.skip_whitespace_and_comments();
+            if self.is_eof() {
+                return self.make_token(TokenKind::Eof, self.pos, self.pos);
             }
-            '>' => {
-                self.pos += 1;
-                if self.current_char() == '=' {
+            self.token_start = self.pos;
+            let c = self.current_char();
+            match c {
+                '`' => return self.lex_string_literal(),
+                '0'..='9' => return self.lex_number(),
+                'a'..='z' | 'A'..='Z' | '_' => return self.lex_identifier(),
+                '=' => return self.single_char_token(TokenKind::Eq),
+                '<' => {
                     self.pos += 1;
-                    self.make_token(TokenKind::GtEq, self.token_start, self.pos)
-                } else {
-                    self.make_token(TokenKind::Gt, self.token_start, self.pos)
+                    if self.current_char() == '=' {
+                        self.pos += 1;
+                        return self.make_token(TokenKind::LtEq, self.token_start, self.pos);
+                    }
+                    return self.make_token(TokenKind::Lt, self.token_start, self.pos);
                 }
-            }
-            '+' => self.single_char_token(TokenKind::Plus),
-            '-' => {
-                self.pos += 1;
-                if self.current_char() == '>' {
+                '>' => {
                     self.pos += 1;
-                    self.make_token(TokenKind::Arrow, self.token_start, self.pos)
-                } else {
-                    self.make_token(TokenKind::Minus, self.token_start, self.pos)
+                    if self.current_char() == '=' {
+                        self.pos += 1;
+                        return self.make_token(TokenKind::GtEq, self.token_start, self.pos);
+                    }
+                    return self.make_token(TokenKind::Gt, self.token_start, self.pos);
                 }
-            }
-            '*' => self.single_char_token(TokenKind::Star),
-            '/' => self.single_char_token(TokenKind::Slash),
-            '%' => self.single_char_token(TokenKind::Percent),
-            '(' => self.single_char_token(TokenKind::LParen),
-            ')' => self.single_char_token(TokenKind::RParen),
-            '{' => self.single_char_token(TokenKind::LBrace),
-            '}' => self.single_char_token(TokenKind::RBrace),
-            '[' => self.single_char_token(TokenKind::LBracket),
-            ']' => self.single_char_token(TokenKind::RBracket),
-            ',' => self.single_char_token(TokenKind::Comma),
-            '.' => self.single_char_token(TokenKind::Dot),
-            ':' => self.single_char_token(TokenKind::Colon),
-            '@' => self.single_char_token(TokenKind::At),
-            _ => {
-                self.pos += 1;
-                self.error_token("unexpected character")
+                '-' => {
+                    self.pos += 1;
+                    if self.current_char() == '>' {
+                        self.pos += 1;
+                        return self.make_token(TokenKind::Arrow, self.token_start, self.pos);
+                    }
+                    return self.make_token(TokenKind::Minus, self.token_start, self.pos);
+                }
+                '+' => return self.single_char_token(TokenKind::Plus),
+                '*' => return self.single_char_token(TokenKind::Star),
+                '/' => {
+                    if self.regex_mode {
+                        self.regex_mode = false;
+                        return self.scan_regex_token();
+                    }
+                    // Check comments
+                    if self.peek_char() == Some('/') {
+                        self.pos += 2;
+                        while self.pos < self.source.len() && self.current_char() != '\n' {
+                            self.pos += 1;
+                        }
+                        continue; // line comment
+                    } else if self.peek_char() == Some('*') {
+                        self.pos += 2;
+                        while self.pos < self.source.len() {
+                            if self.current_char() == '*' && self.peek_char() == Some('/') {
+                                self.pos += 2;
+                                break;
+                            }
+                            self.pos += 1;
+                        }
+                        continue; // block comment
+                    }
+                    return self.single_char_token(TokenKind::Slash);
+                }
+                '%' => return self.single_char_token(TokenKind::Percent),
+                '(' => return self.single_char_token(TokenKind::LParen),
+                ')' => return self.single_char_token(TokenKind::RParen),
+                '{' => return self.single_char_token(TokenKind::LBrace),
+                '}' => return self.single_char_token(TokenKind::RBrace),
+                '[' => return self.single_char_token(TokenKind::LBracket),
+                ']' => return self.single_char_token(TokenKind::RBracket),
+                ',' => return self.single_char_token(TokenKind::Comma),
+                '.' => return self.single_char_token(TokenKind::Dot),
+                ':' => return self.single_char_token(TokenKind::Colon),
+                '@' => return self.single_char_token(TokenKind::At),
+                _ => {
+                    self.pos += 1;
+                    return self.error_token("unexpected character");
+                }
             }
         }
     }
@@ -305,6 +342,75 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Try to scan a regex literal starting from current position.
+    /// Call this when the parser expects a regex (after `matches` keyword).
+    pub fn scan_regex(&mut self) -> Option<Token> {
+        if self.is_eof() || self.current_char() != '/' {
+            return None;
+        }
+        let start = self.pos;
+        self.pos += 1; // consume opening '/'
+        // Scan pattern until unescaped '/'
+        while self.pos < self.source.len() {
+            let c = self.current_char();
+            if c == '\\' {
+                self.pos += 1; // skip escape char
+                self.pos += 1; // skip escaped char
+            } else if c == '/' {
+                // End of pattern
+                self.pos += 1; // consume closing '/'
+                // Scan optional flags
+                while self.pos < self.source.len() && self.current_char().is_ascii_alphabetic() {
+                    self.pos += 1;
+                }
+                let span = Span::new(start, self.pos);
+                return Some(Token {
+                    kind: TokenKind::RegexLiteral,
+                    span,
+                    symbol: None,
+                });
+            } else {
+                self.pos += 1;
+            }
+        }
+        // Unterminated regex
+        let span = Span::new(start, self.pos);
+        self.pos = start; // reset position? we already consumed some chars, but it's an error
+        None
+    }
+
+    fn scan_regex_token(&mut self) -> Token {
+        let start = self.pos;
+        self.pos += 1; // consume opening '/'
+        while self.pos < self.source.len() {
+            let c = self.current_char();
+            if c == '\\' {
+                self.pos += 2; // skip escaped char
+            } else if c == '/' {
+                self.pos += 1; // closing '/'
+                // Scan flags
+                while self.pos < self.source.len() && self.current_char().is_ascii_alphabetic() {
+                    self.pos += 1;
+                }
+                let span = Span::new(start, self.pos);
+                return Token {
+                    kind: TokenKind::RegexLiteral,
+                    span,
+                    symbol: None,
+                };
+            } else {
+                self.pos += 1;
+            }
+        }
+        // Unterminated regex
+        let span = Span::new(start, self.pos);
+        Token {
+            kind: TokenKind::Error,
+            span,
+            symbol: None,
+        }
+    }
+
     fn lex_number(&mut self) -> Token {
         let start = self.pos;
         while self.pos < self.source.len() && self.current_char().is_ascii_digit() {
@@ -335,8 +441,10 @@ impl<'a> Lexer<'a> {
             }
         }
         let word = &self.source[start..self.pos];
-        // Check for keyword
         if let Some(kind) = keyword_token(word) {
+            if kind == TokenKind::Matches {
+                self.regex_mode = true; // next token will be a regex
+            }
             self.make_token(kind, start, self.pos)
         } else {
             let sym = self.interner.intern(word);

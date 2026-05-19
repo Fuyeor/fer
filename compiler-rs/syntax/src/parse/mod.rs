@@ -29,6 +29,8 @@ pub struct Parser<'a> {
     /// Current token (the one that will be consumed by `advance`).
     current: Token,
     peek: Option<Token>, // one-token lookahead
+    /// When true, `{` is not treated as a match expression postfix.
+    suppress_match_postfix: bool,
 }
 
 struct ParserCheckpoint {
@@ -53,6 +55,7 @@ impl<'a> Parser<'a> {
             file_id,
             current,
             peek,
+            suppress_match_postfix: false,
         }
     }
 

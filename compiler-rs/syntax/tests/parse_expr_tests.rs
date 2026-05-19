@@ -9,7 +9,8 @@ fn parse_expr(source: &str) -> Vec<CstNode> {
     let mut nodes = Vec::new();
     let mut diag = DiagnosticBag::new();
     let mut parser = Parser::new(lexer, &mut nodes, &mut diag, vfs::FileId(0));
-    let _ = parser.parse_expr(0);
+    let result = parser.parse_expr(0);
+    assert!(result.is_ok(), "Parse error: {:?}", result.err());
     nodes
 }
 
@@ -32,6 +33,39 @@ fn parse_string_literal() {
     let nodes = parse_expr("`hello`");
     assert_eq!(nodes.len(), 1);
     assert!(matches!(nodes[0].kind, NodeKind::LitString));
+}
+
+#[test]
+fn parse_match_simple() {
+    let nodes = parse_expr(r#"x { `A` { 1 } { 0 } }"#);
+    assert!(
+        nodes
+            .iter()
+            .any(|n| matches!(n.kind, NodeKind::MatchExpr { .. }))
+    );
+}
+
+#[test]
+fn parse_match_with_contains() {
+    let nodes = parse_expr(r#"uuid4 { contains `UUID` { `yes` } { `no` } }"#);
+    // Should contain MatchExpr and PatternCondition
+    assert!(
+        nodes
+            .iter()
+            .any(|n| matches!(n.kind, NodeKind::MatchExpr { .. }))
+    );
+    assert!(
+        nodes
+            .iter()
+            .any(|n| matches!(n.kind, NodeKind::PatternCondition { .. }))
+    );
+}
+
+#[test]
+fn parse_match_with_matches_regex() {
+    let nodes = parse_expr(r#"x { matches /^[0-9]/i { `num` } { `other` } }"#);
+    // Should contain LitRegex
+    assert!(nodes.iter().any(|n| matches!(n.kind, NodeKind::LitRegex)));
 }
 
 #[test]
