@@ -4,7 +4,7 @@
   "description": "Fer Programming Language support for VS Code",
   "version": "0.0.1",
   "publisher": "Fuyeor",
-  "icon": "icon.svg",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/Fuyeor/fer"
