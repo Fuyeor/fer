@@ -4,6 +4,8 @@
   "scopeName": "source.fer",
   "patterns": [
     { "include": "#comments" },
+    { "include": "#punctuation" },
+    { "include": "#types" },
     { "include": "#strings" },
     { "include": "#keywords" },
     { "include": "#operators" },
@@ -18,28 +20,32 @@
         { "name": "comment.line.triple-slash.fer", "match": "///.*" }
       ]
     },
-    "keywords": {
+    "punctuation": {
       "patterns": [
         {
-          "name": "keyword.control.fer",
-          "match": "\\b(struct|enum|exports|function|await|return)\\b"
+          "name": "punctuation.bracket.fer",
+          "match": "[{}()\\[\\]]"
+        },
+        {
+          "name": "punctuation.separator.fer",
+          "match": "[,]"
         }
       ]
     },
-    "operators": {
+    "types": {
       "patterns": [
         {
-          "name": "keyword.operator.logical.fer",
-          "match": "\\b(and|or|not|in|contains|matches|starts|ends|less|more|least|most|equals)\\b"
+          "name": "support.type.primitive.fer",
+          "match": "\\b(i8|i16|i32|i64|i128|u8|u16|u32|u64|u128|f32|f64|bool|string|char|byte|int|float)\\b"
         },
         {
-          "name": "keyword.operator.assignment.fer",
-          "match": "(=|->|=>|==|\\!|\\<|\\>|\\<\\=|\\>\\=)"
+          "name": "entity.name.type.fer",
+          "match": "\\b[A-Z][a-z0-9-]*(?=\\s*=\\s*(enum|struct))\\b"
         }
       ]
     },
     "strings": {
-      "name": "string.quoted.backtick.fer",
+      "name": "string.quoted.fer",
       "begin": "`",
       "end": "`",
       "patterns": [
@@ -55,6 +61,30 @@
         }
       ]
     },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.fer",
+          "match": "\\b(struct|enum|exports)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.logical.fer",
+          "match": "\\b(and|or|not|in|contains|matches|starts|ends|less|more|least|most|equals)\\b"
+        },
+        {
+          "name": "keyword.operator.comparison.fer",
+          "match": "(<|>|<=|>=)"
+        },
+        {
+          "name": "keyword.operator.assignment.fer",
+          "match": "(=|->|=>)"
+        }
+      ]
+    },
     "functions": {
       "patterns": [
         {
@@ -67,8 +97,12 @@
       "patterns": [
         { "name": "constant.numeric.fer", "match": "\\b[0-9]+\\b" },
         {
-          "name": "constant.language.boolean.fer",
-          "match": "\\b(true|false|NULL)\\b"
+          "name": "constant.boolean.fer",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "variable.other.constant.fer",
+          "match": "\\b([a-z][a-z0-9-]*)\\s*(?=\\=)"
         }
       ]
     }
