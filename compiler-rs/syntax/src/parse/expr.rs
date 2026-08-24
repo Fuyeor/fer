@@ -236,7 +236,6 @@ impl<'a> Parser<'a> {
     // --- Postfix: call, index, chain ---
 
     fn parse_call(&mut self, func: NodeId) -> Result<NodeId, ParseError> {
-        let open_paren = self.current_span();
         self.advance(); // consume '('
         let mut args = Vec::new();
         if self.current_kind() != TokenKind::RParen {
@@ -300,7 +299,6 @@ impl<'a> Parser<'a> {
     fn parse_chain(&mut self, base: NodeId) -> Result<NodeId, ParseError> {
         // Already consumed the first '.', now parse steps.
         let mut steps = Vec::new();
-        let mut current_base = base;
         // The dot we just consumed is for the first step.
         loop {
             if self.current_kind() != TokenKind::Dot {
@@ -312,7 +310,6 @@ impl<'a> Parser<'a> {
                 && self.peek_kind() == Some(TokenKind::LParen)
             {
                 // method call: .name(args)
-                let name_token = self.current;
                 self.advance(); // consume identifier
                 // parse call args
                 let open_paren = self.current_span();
@@ -357,11 +354,11 @@ impl<'a> Parser<'a> {
             self.node_span(base).start,
             steps
                 .last()
-                .map(|s| step_span(s))
+                .map(step_span)
                 .unwrap_or(self.node_span(base))
                 .end,
         );
-        let mut children = vec![base];
+        let children = vec![base];
         // We don't store steps as children; they are stored in the node kind.
         let node = self.push_node(NodeKind::ChainExpr { base, steps }, span, children);
         Ok(node)

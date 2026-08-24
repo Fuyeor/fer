@@ -1,6 +1,6 @@
 // syntax/tests/parse_expr_tests.rs
 use infra::{DiagnosticBag, Interner};
-use syntax::cst::{CstNode, NodeKind};
+use syntax::cst::{CstNode, NodeId, NodeKind};
 use syntax::{Lexer, Parser};
 
 fn parse_expr(source: &str) -> Vec<CstNode> {
@@ -102,11 +102,15 @@ fn parse_binary_plus() {
 #[test]
 fn parse_precedence() {
     let nodes = parse_expr("1 + 2 * 3");
-    let binary = &nodes.last().unwrap().kind;
-    if let NodeKind::BinaryOp { op, lhs, rhs } = binary {
-        // The top-level op should be '+'
-        // We can't check op token easily, but we can check structure.
-    }
+    let top_id = NodeId((nodes.len() - 1) as u32);
+    let NodeKind::BinaryOp { lhs, rhs, .. } = &nodes[top_id.0 as usize].kind else {
+        panic!("expected a top-level binary operation");
+    };
+    assert!(matches!(nodes[lhs.0 as usize].kind, NodeKind::LitInteger));
+    assert!(matches!(
+        nodes[rhs.0 as usize].kind,
+        NodeKind::BinaryOp { .. }
+    ));
 }
 
 #[test]

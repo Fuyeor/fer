@@ -85,9 +85,6 @@ impl<'a> Parser<'a> {
                         return Err(self.error("expected package name"));
                     }
                 }
-                let end = self.current_span().start; // current token's start is the end of previous token
-                // Actually we want the end of the last consumed token. Use current_span().end?
-                // We'll use self.pos? Not available. We'll use self.current_span().end for now, but that gives the start of next token, which is fine.
                 let span = Span::new(start, self.current_span().start);
                 Ok(self.push_node(NodeKind::Ident(span), span, vec![]))
             }

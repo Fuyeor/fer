@@ -1,5 +1,6 @@
 // syntax/src/parse/mod.rs
 
+pub mod annotation;
 pub mod error;
 pub mod expr;
 pub mod module;
@@ -114,7 +115,13 @@ impl<'a> Parser<'a> {
                 Ok(stmt) => stmts.push(stmt),
                 Err(_) => {
                     // Attempt recovery by skipping to next possible declaration start.
-                    self.skip_until(&[TokenKind::Struct, TokenKind::Enum, TokenKind::Exports]);
+                    self.skip_until(&[
+                        TokenKind::Hash,
+                        TokenKind::Identifier,
+                        TokenKind::Struct,
+                        TokenKind::Enum,
+                        TokenKind::Exports,
+                    ]);
                     if self.current_kind() == TokenKind::Eof {
                         break;
                     }

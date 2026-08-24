@@ -53,6 +53,7 @@ pub enum TokenKind {
     Colon,    // :
     Arrow,    // ->
     At,       // @ (for import paths)
+    Hash,     // # (for annotations)
 
     // ---- Operators ----
     Plus,    // +
@@ -268,7 +269,7 @@ mod tests {
         for kw in KEYWORDS {
             let tok = keyword_token(kw).expect("keyword must be recognized");
             // basic sanity: it's not an identifier literal
-            assert!(matches!(tok, TokenKind::Identifier) == false);
+            assert!(!matches!(tok, TokenKind::Identifier));
         }
     }
 
