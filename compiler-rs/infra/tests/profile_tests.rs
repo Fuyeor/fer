@@ -16,7 +16,7 @@ fn timing_guard_records_elapsed_time() {
 
 #[test]
 fn null_profile_collector_does_nothing() {
-    let mut collector = NullProfileCollector::default();
+    let mut collector = NullProfileCollector;
     // Just ensure it doesn't panic and can be called.
     collector.record("some_phase");
 }

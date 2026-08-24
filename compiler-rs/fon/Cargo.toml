@@ -1,0 +1,13 @@
+# compiler-rs/fon/Cargo.toml
+
+[package]
+name = "fon"
+version.workspace = true
+edition.workspace = true
+description = "Fer integration adapter for the independent FON parser."
+
+[dependencies]
+fon-parser = { git = "https://github.com/Fuyeor/fon-parser.git", branch = "feat/fon-parser-rs" }
+infra = { workspace = true }
+vfs = { workspace = true }
+query = { workspace = true }

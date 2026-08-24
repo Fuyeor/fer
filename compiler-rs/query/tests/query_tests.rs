@@ -34,14 +34,14 @@ fn derived_query_uses_input() {
     let len_id = QueryId(1);
 
     db.register_input(source_id);
-    db.register_query(len_id, {
-        let source_id = source_id;
+    db.register_query(
+        len_id,
         std::rc::Rc::new(move |db: &Database, _this_id: QueryId| {
             let text: String = db.query(source_id);
             let len = text.len();
             Box::new(len)
-        })
-    });
+        }),
+    );
 
     db.set_input(source_id, "hello".to_string());
     let len: usize = db.query(len_id);

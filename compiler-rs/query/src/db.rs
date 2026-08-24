@@ -37,7 +37,7 @@ pub struct Database {
 }
 
 /// A boxed function that computes a derived query.
-type QueryFn = Rc<dyn Fn(&Database, QueryId) -> Box<dyn Any>>;
+pub type QueryFn = Rc<dyn Fn(&Database, QueryId) -> Box<dyn Any>>;
 
 /// A cached value, tagged with the generation it was computed in.
 struct CachedValue {
@@ -67,6 +67,20 @@ impl Database {
         self.query_fns[id.0 as usize] = Some(f);
     }
 
+    /// Register a derived query and record the input queries it reads.
+    pub fn register_query_with_dependencies(
+        &mut self,
+        id: QueryId,
+        f: QueryFn,
+        dependencies: &[QueryId],
+    ) {
+        self.register_query(id, f);
+        let mut dependents = self.dependents.borrow_mut();
+        for dependency in dependencies {
+            dependents[dependency.0 as usize].push(id);
+        }
+    }
+
     /// Set an input value. Invalidates all transitive dependents.
     pub fn set_input<T: 'static>(&self, id: QueryId, value: T) {
         assert!(
@@ -83,15 +97,30 @@ impl Database {
         self.invalidate_downstream(id);
     }
 
+    /// Read an input query without invoking a derived query function.
+    pub fn input<T: 'static + Clone>(&self, id: QueryId) -> T {
+        assert!(
+            self.query_fns[id.0 as usize].is_none(),
+            "Not an input query"
+        );
+        self.cache
+            .borrow()
+            .get(id.0 as usize)
+            .and_then(Option::as_ref)
+            .and_then(|cached| cached.value.downcast_ref::<T>())
+            .cloned()
+            .expect("Input query has not been set")
+    }
+
     /// Get the value of a query, computing it if necessary.
     pub fn query<T: 'static + Clone>(&self, id: QueryId) -> T {
         // Check cache
         {
             let cache = self.cache.borrow();
-            if let Some(cached) = &cache[id.0 as usize] {
-                if cached.generation == self.generation.get() {
-                    return cached.value.downcast_ref::<T>().unwrap().clone();
-                }
+            if let Some(cached) = &cache[id.0 as usize]
+                && cached.generation == self.generation.get()
+            {
+                return cached.value.downcast_ref::<T>().unwrap().clone();
             }
         }
 
