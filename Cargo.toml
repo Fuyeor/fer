@@ -12,4 +12,5 @@ edition = "2024"
 infra = { path = "compiler-rs/infra" }
 vfs = { path = "compiler-rs/vfs" }
 syntax = { path = "compiler-rs/syntax" }
+query = { path = "compiler-rs/query" }
 ir = { path = "compiler-rs/ir" }

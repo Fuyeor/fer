@@ -3,6 +3,21 @@
 version = 4
 
 [[package]]
+name = "fon"
+version = "0.0.0"
+dependencies = [
+ "fon-parser",
+ "infra",
+ "query",
+ "vfs",
+]
+
+[[package]]
+name = "fon-parser"
+version = "0.0.0"
+source = "git+https://github.com/Fuyeor/fon-parser.git?branch=feat%2Ffon-parser-rs#d5255adda9a827faeb5a0ee00204d232f6e89036"
+
+[[package]]
 name = "infra"
 version = "0.0.0"
 

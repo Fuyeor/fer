@@ -24,6 +24,12 @@ pub struct SourceMap {
     path_to_id: HashMap<VirtualPath, FileId>,
 }
 
+impl Default for SourceMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SourceMap {
     pub fn new() -> Self {
         Self {
@@ -44,10 +50,7 @@ impl SourceMap {
             return Some(id);
         }
         let id = FileId(self.files.len() as u32);
-        self.files.push(SourceFile {
-            path: path.clone(),
-            content,
-        });
+        self.files.push(SourceFile { path, content });
         self.path_to_id.insert(path, id);
         Some(id)
     }
