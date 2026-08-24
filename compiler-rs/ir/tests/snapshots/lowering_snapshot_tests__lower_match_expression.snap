@@ -1,0 +1,263 @@
+---
+source: compiler-rs/ir/tests/lowering_snapshot_tests.rs
+expression: hir
+---
+HirFile {
+    file_id: FileId(
+        0,
+    ),
+    items: [
+        HirId(
+            0,
+        ),
+    ],
+    arena: HirArena {
+        nodes: [
+            Item(
+                Item {
+                    span: Span {
+                        start: 0,
+                        end: 58,
+                    },
+                    annotations: [],
+                    kind: Const(
+                        ConstDef {
+                            name: Name {
+                                span: Span {
+                                    start: 0,
+                                    end: 6,
+                                },
+                            },
+                            value: ExprId(
+                                6,
+                            ),
+                        },
+                    ),
+                },
+            ),
+        ],
+        bodies: [
+            Body {
+                span: Span {
+                    start: 21,
+                    end: 26,
+                },
+                statements: [
+                    Expr {
+                        span: Span {
+                            start: 23,
+                            end: 24,
+                        },
+                        expr: ExprId(
+                            2,
+                        ),
+                    },
+                ],
+            },
+            Body {
+                span: Span {
+                    start: 45,
+                    end: 50,
+                },
+                statements: [
+                    Expr {
+                        span: Span {
+                            start: 47,
+                            end: 48,
+                        },
+                        expr: ExprId(
+                            4,
+                        ),
+                    },
+                ],
+            },
+            Body {
+                span: Span {
+                    start: 51,
+                    end: 56,
+                },
+                statements: [
+                    Expr {
+                        span: Span {
+                            start: 53,
+                            end: 54,
+                        },
+                        expr: ExprId(
+                            5,
+                        ),
+                    },
+                ],
+            },
+        ],
+        exprs: [
+            Expr {
+                span: Span {
+                    start: 9,
+                    end: 14,
+                },
+                kind: Name(
+                    Name {
+                        span: Span {
+                            start: 9,
+                            end: 14,
+                        },
+                    },
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 17,
+                    end: 20,
+                },
+                kind: Literal(
+                    String(
+                        "A",
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 23,
+                    end: 24,
+                },
+                kind: Literal(
+                    Integer(
+                        1,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 36,
+                    end: 44,
+                },
+                kind: Literal(
+                    String(
+                        "needle",
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 47,
+                    end: 48,
+                },
+                kind: Literal(
+                    Integer(
+                        2,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 53,
+                    end: 54,
+                },
+                kind: Literal(
+                    Integer(
+                        0,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 9,
+                    end: 58,
+                },
+                kind: Match(
+                    MatchId(
+                        0,
+                    ),
+                ),
+            },
+        ],
+        matches: [
+            Match {
+                span: Span {
+                    start: 9,
+                    end: 58,
+                },
+                scrutinee: ExprId(
+                    0,
+                ),
+                arms: [
+                    MatchArmId(
+                        0,
+                    ),
+                    MatchArmId(
+                        1,
+                    ),
+                    MatchArmId(
+                        2,
+                    ),
+                ],
+            },
+        ],
+        match_arms: [
+            MatchArm {
+                span: Span {
+                    start: 17,
+                    end: 26,
+                },
+                condition: Some(
+                    ConditionId(
+                        0,
+                    ),
+                ),
+                body: BodyId(
+                    0,
+                ),
+            },
+            MatchArm {
+                span: Span {
+                    start: 27,
+                    end: 50,
+                },
+                condition: Some(
+                    ConditionId(
+                        1,
+                    ),
+                ),
+                body: BodyId(
+                    1,
+                ),
+            },
+            MatchArm {
+                span: Span {
+                    start: 51,
+                    end: 56,
+                },
+                condition: None,
+                body: BodyId(
+                    2,
+                ),
+            },
+        ],
+        conditions: [
+            Condition {
+                span: Span {
+                    start: 17,
+                    end: 20,
+                },
+                kind: Equals(
+                    ExprId(
+                        1,
+                    ),
+                ),
+            },
+            Condition {
+                span: Span {
+                    start: 27,
+                    end: 44,
+                },
+                kind: Predicate {
+                    op: Contains,
+                    rhs: ExprId(
+                        3,
+                    ),
+                },
+            },
+        ],
+    },
+    diagnostics: [],
+}

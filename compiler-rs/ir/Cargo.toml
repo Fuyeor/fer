@@ -1,0 +1,15 @@
+# compiler-rs/ir/Cargo.toml
+[package]
+name = "ir"
+version.workspace = true
+edition.workspace = true
+description = "Fer high-level intermediate representation and CST lowering engine."
+
+[dependencies]
+infra = { workspace = true }
+query = { workspace = true }
+syntax = { workspace = true }
+vfs = { workspace = true }
+
+[dev-dependencies]
+insta = { version = "1.43", features = ["yaml"] }
