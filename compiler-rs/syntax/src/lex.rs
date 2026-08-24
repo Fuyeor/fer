@@ -17,7 +17,6 @@ pub struct Lexer<'a> {
     source: &'a str,
     pos: usize,
     interner: &'a mut Interner,
-    state: LexerState,
     /// Track the start of the current token for span calculation.
     token_start: usize,
     /// true after 'matches' keyword
@@ -29,23 +28,7 @@ pub struct Lexer<'a> {
 pub struct LexerCheckpoint {
     pos: usize,
     token_start: usize,
-    state: LexerState,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LexerState {
-    Normal,
-    InString(StringState),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct StringState {
-    /// Whether we've already emitted a StringStart token.
-    started: bool,
-    /// Byte offset where current text segment began.
-    text_start: usize,
-    /// The opening backtick position (for span).
-    open_pos: usize,
+    regex_mode: bool,
 }
 
 impl<'a> Lexer<'a> {
@@ -54,7 +37,6 @@ impl<'a> Lexer<'a> {
             source,
             pos: 0,
             interner,
-            state: LexerState::Normal,
             token_start: 0,
             regex_mode: false,
         }
@@ -64,55 +46,24 @@ impl<'a> Lexer<'a> {
         self.regex_mode = mode;
     }
 
-    /// Skip whitespace but not comments.
-    pub fn skip_whitespace(&mut self) {
-        while self.pos < self.source.len() {
-            match self.current_char() {
-                ' ' | '\t' | '\n' | '\r' => self.pos += 1,
-                _ => break,
-            }
-        }
-    }
-
     /// Advance to the next token.
     /// Returns `Token { kind: Eof, .. }` after the source is exhausted.
     pub fn next_token(&mut self) -> Token {
-        // Must branch without holding a mutable borrow on self.state.
-        if matches!(self.state, LexerState::InString(_)) {
-            self.lex_in_string()
-        } else {
-            self.lex_normal()
-        }
+        self.lex_normal()
     }
 
     pub fn checkpoint(&self) -> LexerCheckpoint {
         LexerCheckpoint {
             pos: self.pos,
             token_start: self.token_start,
-            state: self.state,
+            regex_mode: self.regex_mode,
         }
     }
 
     pub fn restore(&mut self, ck: LexerCheckpoint) {
         self.pos = ck.pos;
         self.token_start = ck.token_start;
-        self.state = ck.state;
-    }
-
-    /// After parsing an interpolation expression, call this to switch the
-    /// lexer back into string scanning mode.
-    pub fn resume_string(&mut self) {
-        let mut state = self.state;
-        if let LexerState::InString(ref mut s) = state {
-            s.started = true;
-            s.text_start = self.pos;
-        }
-        self.state = state;
-    }
-
-    /// Returns true if the lexer is currently scanning a string.
-    pub fn is_in_string(&self) -> bool {
-        matches!(self.state, LexerState::InString(_))
+        self.regex_mode = ck.regex_mode;
     }
 
     // -------------------- Normal mode --------------------
@@ -191,6 +142,7 @@ impl<'a> Lexer<'a> {
                 '.' => return self.single_char_token(TokenKind::Dot),
                 ':' => return self.single_char_token(TokenKind::Colon),
                 '@' => return self.single_char_token(TokenKind::At),
+                '#' => return self.single_char_token(TokenKind::Hash),
                 _ => {
                     self.pos += 1;
                     return self.error_token("unexpected character");
@@ -227,44 +179,6 @@ impl<'a> Lexer<'a> {
         self.error_token("unterminated string literal")
     }
 
-    // -------------------- In-string mode --------------------
-    fn lex_in_string(&mut self) -> Token {
-        // Copy the current state so we can mutate a local copy without
-        // holding a borrow on `self.state`.
-        let mut state = self.state;
-        if let LexerState::InString(ref mut s) = state {
-            if !s.started {
-                s.started = true;
-                s.text_start = self.pos;
-            }
-
-            while self.pos < self.source.len() {
-                let c = self.current_char();
-                if c == '`' {
-                    let text = self.collect_text_and_crop_indent(s.text_start, self.pos);
-                    let end_pos = self.pos + 1;
-                    self.pos += 1;
-                    self.state = LexerState::Normal; // exit string mode
-                    return Token {
-                        kind: TokenKind::StringLiteral,
-                        span: Span::new(s.open_pos, end_pos),
-                        symbol: Some(self.interner.intern(&text)),
-                    };
-                } else if c == '\\' {
-                    self.pos += 1; // skip '\'
-                    self.pos += 1; // skip escaped char
-                } else {
-                    self.pos += 1;
-                }
-            }
-            // EOF in string → error
-            self.state = LexerState::Normal;
-            self.error_token("unterminated string")
-        } else {
-            unreachable!()
-        }
-    }
-
     /// Collect the text between text_start and end_pos, removing leading
     /// indentation according to Fer's multi-line string rules.
     /// Also processes escape sequences.
@@ -275,7 +189,7 @@ impl<'a> Lexer<'a> {
         // If the first line is empty (because string started with newline), remove it.
         if lines
             .first()
-            .map_or(false, |l| l.is_empty() || l.trim().is_empty())
+            .is_some_and(|l| l.is_empty() || l.trim().is_empty())
         {
             // The first line might be just whitespace before the newline? Actually the opening backtick
             // is followed by optional newline. If there's a newline immediately, raw starts with '\n'.
@@ -342,43 +256,6 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Try to scan a regex literal starting from current position.
-    /// Call this when the parser expects a regex (after `matches` keyword).
-    pub fn scan_regex(&mut self) -> Option<Token> {
-        if self.is_eof() || self.current_char() != '/' {
-            return None;
-        }
-        let start = self.pos;
-        self.pos += 1; // consume opening '/'
-        // Scan pattern until unescaped '/'
-        while self.pos < self.source.len() {
-            let c = self.current_char();
-            if c == '\\' {
-                self.pos += 1; // skip escape char
-                self.pos += 1; // skip escaped char
-            } else if c == '/' {
-                // End of pattern
-                self.pos += 1; // consume closing '/'
-                // Scan optional flags
-                while self.pos < self.source.len() && self.current_char().is_ascii_alphabetic() {
-                    self.pos += 1;
-                }
-                let span = Span::new(start, self.pos);
-                return Some(Token {
-                    kind: TokenKind::RegexLiteral,
-                    span,
-                    symbol: None,
-                });
-            } else {
-                self.pos += 1;
-            }
-        }
-        // Unterminated regex
-        let span = Span::new(start, self.pos);
-        self.pos = start; // reset position? we already consumed some chars, but it's an error
-        None
-    }
-
     fn scan_regex_token(&mut self) -> Token {
         let start = self.pos;
         self.pos += 1; // consume opening '/'
@@ -418,7 +295,7 @@ impl<'a> Lexer<'a> {
         }
         let is_float = self.pos < self.source.len()
             && self.current_char() == '.'
-            && self.peek_next_char().map_or(false, |c| c.is_ascii_digit());
+            && self.peek_next_char().is_some_and(|c| c.is_ascii_digit());
         if is_float {
             self.pos += 1; // skip '.'
             while self.pos < self.source.len() && self.current_char().is_ascii_digit() {
@@ -469,7 +346,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn error_token(&mut self, msg: &str) -> Token {
+    fn error_token(&mut self, _msg: &str) -> Token {
         // Produce an Error token spanning the current character.
         let start = self.pos;
         self.pos += 1; // skip the problematic char
@@ -608,6 +485,11 @@ mod tests {
     #[test]
     fn at_symbol() {
         assert_eq!(lex_one("@").kind, TokenKind::At);
+    }
+
+    #[test]
+    fn hash_symbol() {
+        assert_eq!(lex_one("#").kind, TokenKind::Hash);
     }
 
     #[test]

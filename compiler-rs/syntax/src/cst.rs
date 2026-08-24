@@ -6,7 +6,7 @@ use infra::Span;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NodeId(pub u32);
 
-/// A node in the lossless concrete syntax tree.
+/// A node in the source-mapped concrete syntax tree.
 #[derive(Debug, Clone)]
 pub struct CstNode {
     pub id: NodeId,
@@ -22,23 +22,36 @@ pub enum NodeKind {
 
     // ---- Declarations ----
     FunctionDef {
+        annotations: Vec<NodeId>,
         name: Span,
         params: Vec<NodeId>,
         return_type: Option<NodeId>,
         body: NodeId,
     },
     StructDef {
+        annotations: Vec<NodeId>,
         name: Span,
         fields: Vec<NodeId>,
     },
     LitRegex,
     EnumDef {
+        annotations: Vec<NodeId>,
         name: Span,
         variants: Vec<NodeId>,
     },
     FieldDef {
+        annotations: Vec<NodeId>,
         name: Span,
-        type_annotation: NodeId,
+        type_annotation: Option<NodeId>,
+        default_value: Option<NodeId>,
+    },
+    Annotation {
+        name: Span,
+        arguments: Vec<NodeId>,
+    },
+    AnnotationArg {
+        name: Option<Span>,
+        value: NodeId,
     },
 
     // ---- Statements ----
@@ -46,6 +59,7 @@ pub enum NodeKind {
         expr: NodeId,
     },
     AssignStmt {
+        annotations: Vec<NodeId>,
         target: NodeId,
         value: NodeId,
     },
