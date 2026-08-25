@@ -1,0 +1,13 @@
+# compiler-rs/analysis/Cargo.toml
+[package]
+name = "analysis"
+version.workspace = true
+edition.workspace = true
+description = "Read-only semantic analysis for Fer HIR."
+
+[dependencies]
+infra = { workspace = true }
+vfs = { workspace = true }
+syntax = { workspace = true }
+ir = { workspace = true }
+query = { workspace = true }
