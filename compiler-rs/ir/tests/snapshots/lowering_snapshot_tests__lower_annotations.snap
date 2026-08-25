@@ -1,0 +1,165 @@
+---
+source: compiler-rs/ir/tests/lowering_snapshot_tests.rs
+expression: hir
+---
+HirFile {
+    file_id: FileId(
+        0,
+    ),
+    items: [
+        HirId(
+            3,
+        ),
+    ],
+    arena: HirArena {
+        nodes: [
+            Annotation(
+                Annotation {
+                    span: Span {
+                        start: 0,
+                        end: 26,
+                    },
+                    name: Name {
+                        span: Span {
+                            start: 2,
+                            end: 6,
+                        },
+                    },
+                    arguments: [
+                        AnnotationArg {
+                            span: Span {
+                                start: 9,
+                                end: 10,
+                            },
+                            name: None,
+                            value: ExprId(
+                                0,
+                            ),
+                        },
+                        AnnotationArg {
+                            span: Span {
+                                start: 12,
+                                end: 25,
+                            },
+                            name: Some(
+                                Name {
+                                    span: Span {
+                                        start: 12,
+                                        end: 16,
+                                    },
+                                },
+                            ),
+                            value: ExprId(
+                                1,
+                            ),
+                        },
+                    ],
+                },
+            ),
+            Annotation(
+                Annotation {
+                    span: Span {
+                        start: 45,
+                        end: 56,
+                    },
+                    name: Name {
+                        span: Span {
+                            start: 47,
+                            end: 55,
+                        },
+                    },
+                    arguments: [],
+                },
+            ),
+            Field(
+                Field {
+                    span: Span {
+                        start: 45,
+                        end: 64,
+                    },
+                    annotations: [
+                        HirId(
+                            1,
+                        ),
+                    ],
+                    name: Name {
+                        span: Span {
+                            start: 57,
+                            end: 59,
+                        },
+                    },
+                    shape: Required {
+                        type_ref: TypeRef {
+                            name: Name {
+                                span: Span {
+                                    start: 61,
+                                    end: 64,
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
+            Item(
+                Item {
+                    span: Span {
+                        start: 0,
+                        end: 66,
+                    },
+                    annotations: [
+                        HirId(
+                            0,
+                        ),
+                    ],
+                    kind: Struct(
+                        StructDef {
+                            name: Name {
+                                span: Span {
+                                    start: 27,
+                                    end: 33,
+                                },
+                            },
+                            fields: [
+                                HirId(
+                                    2,
+                                ),
+                            ],
+                        },
+                    ),
+                },
+            ),
+        ],
+        bodies: [],
+        exprs: [
+            Expr {
+                span: Span {
+                    start: 9,
+                    end: 10,
+                },
+                kind: Literal(
+                    Integer(
+                        1,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 19,
+                    end: 25,
+                },
+                kind: Name(
+                    Name {
+                        span: Span {
+                            start: 19,
+                            end: 25,
+                        },
+                    },
+                ),
+            },
+        ],
+        matches: [],
+        match_arms: [],
+        conditions: [],
+    },
+    diagnostics: [],
+}
