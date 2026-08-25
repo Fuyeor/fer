@@ -31,6 +31,7 @@ struct Resolver<'a> {
     definitions: Vec<DefinitionRecord>,
     locals: Vec<LocalBinding>,
     expr_targets: Vec<Option<DefTarget>>,
+    assignment_locals: Vec<Option<LocalId>>,
     diagnostics: Vec<Diagnostic>,
     next_local: usize,
 }
@@ -44,6 +45,7 @@ impl<'a> Resolver<'a> {
             definitions: Vec::new(),
             locals: Vec::new(),
             expr_targets: vec![None; hir.arena.exprs.len()],
+            assignment_locals: vec![None; hir.arena.exprs.len()],
             diagnostics: Vec::new(),
             next_local: 0,
         }
@@ -59,6 +61,7 @@ impl<'a> Resolver<'a> {
         ResolutionTable::from_parts(
             self.hir.file_id,
             self.expr_targets,
+            self.assignment_locals,
             self.definitions,
             self.locals,
             self.scopes.into_scopes(),
@@ -179,6 +182,7 @@ impl<'a> Resolver<'a> {
                 };
                 let local = LocalId::new(self.next_local);
                 if self.define(scope, text.clone(), DefTarget::Local(local), name.span) {
+                    self.assignment_locals[target.index()] = Some(local);
                     self.locals.push(LocalBinding {
                         id: local,
                         name: text,

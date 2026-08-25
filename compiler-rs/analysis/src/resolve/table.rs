@@ -53,6 +53,7 @@ pub struct LocalBinding {
 pub struct ResolutionTable {
     pub file_id: FileId,
     pub expr_targets: Vec<Option<DefTarget>>,
+    pub assignment_locals: Vec<Option<LocalId>>,
     pub definitions: Vec<Definition>,
     pub locals: Vec<LocalBinding>,
     pub scopes: Vec<Scope>,
@@ -70,6 +71,11 @@ impl ResolutionTable {
         self.target(id)
     }
 
+    /// Return the analysis-owned local introduced by an assignment target.
+    pub fn assignment_local(&self, id: ExprId) -> Option<LocalId> {
+        self.assignment_locals.get(id.index()).copied().flatten()
+    }
+
     /// Return a definition by its stable binding ID.
     pub fn definition(&self, id: BindingId) -> Option<&Definition> {
         self.definitions.get(id.index())
@@ -79,6 +85,7 @@ impl ResolutionTable {
     pub(crate) fn from_parts(
         file_id: FileId,
         expr_targets: Vec<Option<DefTarget>>,
+        assignment_locals: Vec<Option<LocalId>>,
         definitions: Vec<Definition>,
         locals: Vec<LocalBinding>,
         scopes: Vec<Scope>,
@@ -87,6 +94,7 @@ impl ResolutionTable {
         Self {
             file_id,
             expr_targets,
+            assignment_locals,
             definitions,
             locals,
             scopes,

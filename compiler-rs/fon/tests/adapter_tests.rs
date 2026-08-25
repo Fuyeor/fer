@@ -76,5 +76,5 @@ fn maps_fon_diagnostics_to_fer_diagnostic_bag() {
     assert!(bag.has_errors());
     let diagnostic = bag.iter().next().expect("mapped diagnostic");
     assert_eq!(diagnostic.severity, Severity::Error);
-    assert_eq!(diagnostic.span, Span::new(6, 7));
+    assert_eq!(diagnostic.primary, Span::new(6, 7));
 }

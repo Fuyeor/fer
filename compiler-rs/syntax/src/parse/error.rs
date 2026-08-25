@@ -2,15 +2,17 @@
 
 use super::{ParseError, Parser};
 use crate::grammar::TokenKind;
-use infra::Diagnostic;
+use infra::{Diagnostic, DiagnosticValue, MessageId};
 
 impl<'a> Parser<'a> {
     /// Emit an error diagnostic and return a ParseError.
     pub fn error(&mut self, message: impl Into<String>) -> ParseError {
         let msg = message.into();
         let span = self.current_span();
-        self.diagnostics
-            .add(Diagnostic::error("parse-error", msg.clone(), span));
+        self.diagnostics.add(
+            Diagnostic::error("parse-error", MessageId::new("syntax.parse-error"), span)
+                .with_arg("message", DiagnosticValue::Text(msg.clone())),
+        );
         ParseError { message: msg, span }
     }
 

@@ -8,5 +8,8 @@ pub mod diagnostic;
 pub mod diagnostic_bag;
 
 // Re-export key types so users can just `use infra::diag::*`
-pub use diagnostic::{Diagnostic, Severity};
+pub use diagnostic::{
+    Applicability, Diagnostic, DiagnosticArg, DiagnosticLabel, DiagnosticNote,
+    DiagnosticSuggestion, DiagnosticValue, MessageId, Severity,
+};
 pub use diagnostic_bag::DiagnosticBag;
