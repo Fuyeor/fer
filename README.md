@@ -9,10 +9,10 @@
 
 Fer uses a strict module system. Relative paths using `../` are prohibited to ensure project structure clarity.
 
-- **Standard Library**: `{ get post } = @fer/http`
+- **Standard Library**: `{ get, post } = @fer/http`
 - **Root-relative (Internal)**: `{ check-username-availability } = @/utils/username`
 - **Relative (Current Directory)**: `{ create-user } = ./repository`
-- **Renaming (Aliasing)**: `{ get post Http = HttpClient } = @fer/http` (Renames `Http` to `HttpClient`)
+- **Renaming (Aliasing)**: `{ get, post, Http -> HttpClient } = @fer/http` (Renames `Http` to `HttpClient`)
 
 ### 2. Comments
 
@@ -24,18 +24,18 @@ Fer uses a strict module system. Relative paths using `../` are prohibited to en
 
 In Fer, all definitions are **immutable constants** by default. There are no variables, ensuring thread safety and predictability.
 
-- `define-var = "variable"` (Type inference, equivalent to `const` in JS)
-- `x = 0` (Inferred as `i8`)
+- `` x = `variable` `` (Type inference)
+- `x: u8 = 10` (Assign its type)
 - **Statement Terminator**: Newline (`\n`)
 
 ### 4. Arrays
 
-- **Explicit Definition**: `array = [123 456 789]`
+- **Explicit Definition**: `array = [123, 456, 789]`
 - **Auto-completion Support**: While implicit arrays (space-separated) were deprecated in `v0.0.1` to prevent ambiguity, the IDE plugin provides smart completion to streamline writing.
 
 ### 5. Destructuring
 
-`{ const1 const2 const3 = expr } = object`
+`{ const1, const2, const3 -> expr } = object`
 
 ### 6. Condition Expressions
 
@@ -44,9 +44,9 @@ A `condition` is an expression wrapped in `()` that returns a boolean.
 - **Strings**: `contains`, `starts`, `ends`, `equals`, `matches` (Regex)
 - **Numbers**: `less` (`<`), `more` (`>`), `least` (`>=`), `most` (`<=`), `equals`
 - **Arrays**: `in` (e.g., `user.relationship in [follower friend]`)
-- **Logic**: `and`, `or`, `xor`, `not` (or `!(...)`)
+- **Quantifier**: `all`, `any`, `one`, `none`, `not`
 
-Example: `(comment.content matches \btx(|et|t|.*)\b) or (user.reputations less 200)`
+Example: `any (comment.content matches \btx(|et|t|.*)\b, user.reputations less 200)`
 
 ### 7. Match Expressions
 
@@ -71,7 +71,7 @@ print(age {
 }) // Outputs: "adult"
 
 // Combining with Condition Expressions
-result = ((constant1 matches regex) or (constant2 contains `xxx`)) {
+result = any (constant1 matches regex, constant2 contains `xxx`) {
   true { `Matched` }
   { `Not Matched` }
 }
@@ -84,13 +84,8 @@ To ensure maintainability and ease of refactoring, functions require explicit pa
 
 ```fer
 // Named Function
-authenticate(user: string, token: string) -> Bool {
+authenticate = (user: string, token: string) -> bool {
   // Function body
-}
-
-// Anonymous / High-order Function
-callback = (req: Request) -> Response {
-  handle(req)
 }
 ```
 
@@ -121,18 +116,16 @@ multiple2 = `This is a string \
 
 ### 10. Data Structures (Structs & Enums)
 
-Fer uses `=` for member definitions to minimize "syntactic friction."
-
 ```fer
 // Define an Enum
-Gender = enum {
-  ai female male nonbinary
+Gender: enum {
+  ai, female, male, nonbinary
 }
 
 // Define a Struct
-User = struct {
-  id     = i64
-  name   = string
-  gender = Gender
+User: struct {
+  id: i64
+  name: string
+  gender: Gender
 }
 ```

@@ -5,13 +5,13 @@ x = 1
 y1 = (x > 1) // false
 
 // Parentheses clearly define the boundaries of and/or
-y2 = ((x > 1) or (x equals 1)) // true
+y2 = any (x > 1, x equals 1) // true
 
 // not applies to a single comparison
-y3 = (not(x > 1) or (x equals 1)) // true
+y3 = any (not(x > 1), x equals 1) // true
 
 // not applies to the entire result
-y4 = not((x > 1) or (x equals 1)) // false
+y4 = not(any (x > 1, x equals 1)) // false
 
 uuid4 = `8dd24bce-89c0-41e1-bd2a-4a02ae3735cc`
 uuid4-regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -40,10 +40,10 @@ legitimate-ua = [
 
 // Because it involves complex validation of multiple variables (ua, asn)
 // Instead of treating ua or asn as the subject, we return a bool for the condition as a whole
-status = (
-  (ua in legitimate-ua) or
-  (asn equals 13414 and ua contains `Googlebot`) or
-  (asn equals 14618 and ua contains `redditbot`)
+status = any (
+  ua in legitimate-ua
+  all (asn equals 13414, ua contains `Googlebot`)
+  all (asn equals 14618, ua contains `redditbot`)
 ) {
   true { `Allowed bot` }
   { `Disallowed bot` }

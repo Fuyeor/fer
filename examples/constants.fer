@@ -3,4 +3,4 @@
 // define a constant value
 score-value = 85
 // define a constant array
-candidates = [`Gemini` `Qwen` `DeepSeek` `AI on Google search`]
+candidates = [`Gemini`, `Qwen`, `DeepSeek`, `AI on Google search`]

@@ -20,13 +20,9 @@
     "languages": [
       {
         "id": "fer",
-        "aliases": [
-          "Fer",
-          "fer"
-        ],
         "extensions": [
           ".fer",
-          ".fu"
+          ".fon"
         ],
         "configuration": "./language-configuration.json",
         "brackets": []
