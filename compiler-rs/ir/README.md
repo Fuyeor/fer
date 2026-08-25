@@ -30,13 +30,15 @@ The former `field = type` spelling is lowered as an inferred field whose default
 
 Match expressions have a dedicated `MatchId` arena. Each `MatchArm` stores an optional `ConditionId` and a `BodyId`. A missing condition is the default arm. Literal patterns lower to equality conditions, while parser-emitted `PatternCondition` nodes lower to normalized predicate operators such as `contains`, `matches`, `<`, and `>=`.
 
+Logical condition groups lower to `ExprKind::Quantifier` with `QuantifierKind::{All, Any, One, None}` and an ordered `Vec<ExprId>`. The syntax accepts comma or skipped-trivia separators and nested quantifiers. The former `and`, `or`, and `xor` words are not lowered as logical binary operators.
+
 ## Query integration
 
 Call `register_queries` once on a `query::Database`. Set an owned `CstFile` with `set_cst_file`, then read `LOWER_HIR_QUERY` as a `HirFile`. The query declares its dependency on `CST_INPUT_QUERY`, so replacing the input invalidates the cached HIR result.
 
 ## Tests
 
-`tests/lowering_snapshot_tests.rs` parses CST fixtures and verifies HIR snapshots for constants, all struct-field shapes, annotations, and match branches. `tests/query_tests.rs` verifies query registration, cache reuse, and input invalidation.
+`tests/lowering_snapshot_tests.rs` parses CST fixtures and verifies HIR snapshots for constants, all struct-field shapes, annotations, quantifiers, and match branches. `tests/query_tests.rs` verifies query registration, cache reuse, and input invalidation.
 
 Run the crate checks with:
 

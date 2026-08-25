@@ -174,8 +174,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a prefix expression (atom or unary prefix).
+    /// Parse a prefix expression (quantifier, atom, or unary prefix).
     fn parse_prefix(&mut self) -> Result<NodeId, ParseError> {
+        if let Some(kind) = self.current_quantifier_kind() {
+            return self.parse_quantifier(kind);
+        }
         let token = self.current;
         match token.kind {
             TokenKind::Minus | TokenKind::Not => {

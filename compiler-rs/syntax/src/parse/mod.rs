@@ -5,6 +5,7 @@ pub mod error;
 pub mod expr;
 pub mod module;
 pub mod pattern;
+pub mod quantifier;
 pub mod stmt;
 
 use infra::{DiagnosticBag, Span};

@@ -60,7 +60,7 @@ dependencies = [
 [[package]]
 name = "fon-parser"
 version = "0.0.0"
-source = "git+https://github.com/Fuyeor/fon-parser.git?branch=feat%2Ffon-parser-rs#d5255adda9a827faeb5a0ee00204d232f6e89036"
+source = "git+https://github.com/Fuyeor/fon-parser.git?branch=main#98dc40e9c444e1d610052bf6d93af6ebcce2ca4b"
 
 [[package]]
 name = "getrandom"

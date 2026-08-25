@@ -27,8 +27,6 @@ pub enum TokenKind {
     Struct,   // struct
     Enum,     // enum
     Exports,  // exports
-    And,      // and
-    Or,       // or
     Not,      // not
     Contains, // contains
     Less,     // less
@@ -89,18 +87,6 @@ pub struct OpInfo {
 
 /// Static precedence table for binary operators.
 pub const BINARY_OPS: &[OpInfo] = &[
-    // Logical or
-    OpInfo {
-        kind: TokenKind::Or,
-        prec: 1,
-        assoc: Assoc::Left,
-    },
-    // Logical and
-    OpInfo {
-        kind: TokenKind::And,
-        prec: 2,
-        assoc: Assoc::Left,
-    },
     // Comparisons (all same precedence, non-associative in theory, but we'll treat as left)
     // <
     OpInfo {
@@ -231,8 +217,8 @@ pub fn prec_of(kind: TokenKind) -> Option<(u8, Assoc)> {
 
 /// All keywords as string slices, for documentation and testing.
 pub const KEYWORDS: &[&str] = &[
-    "struct", "enum", "exports", "and", "or", "not", "contains", "less", "more", "least", "most",
-    "equals", "in", "matches", "starts", "ends", "true", "false",
+    "struct", "enum", "exports", "not", "contains", "less", "more", "least", "most", "equals",
+    "in", "matches", "starts", "ends", "true", "false",
 ];
 
 /// Map a keyword string to its TokenKind, if it is one.
@@ -241,8 +227,6 @@ pub fn keyword_token(word: &str) -> Option<TokenKind> {
         "struct" => Some(TokenKind::Struct),
         "enum" => Some(TokenKind::Enum),
         "exports" => Some(TokenKind::Exports),
-        "and" => Some(TokenKind::And),
-        "or" => Some(TokenKind::Or),
         "not" => Some(TokenKind::Not),
         "contains" => Some(TokenKind::Contains),
         "less" => Some(TokenKind::Less),
@@ -278,6 +262,9 @@ mod tests {
         assert_eq!(keyword_token("foo"), None);
         assert_eq!(keyword_token("bar"), None);
         assert_eq!(keyword_token(""), None);
+        assert_eq!(keyword_token("and"), None);
+        assert_eq!(keyword_token("or"), None);
+        assert_eq!(keyword_token("xor"), None);
     }
 
     #[test]

@@ -39,7 +39,20 @@ pub enum ExprKind {
         index: ExprId,
     },
     Match(MatchId),
+    Quantifier {
+        kind: QuantifierKind,
+        conditions: Vec<ExprId>,
+    },
     Error,
+}
+
+/// Quantifier forms used to combine condition expressions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuantifierKind {
+    All,
+    Any,
+    One,
+    None,
 }
 
 /// Literal values that can be represented without syntax delimiters.
@@ -63,8 +76,6 @@ pub enum UnaryOp {
 /// Binary operators normalized from Fer keyword and symbolic tokens.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
-    Or,
-    And,
     Lt,
     Less,
     Gt,

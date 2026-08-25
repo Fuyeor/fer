@@ -1,0 +1,272 @@
+---
+source: compiler-rs/ir/tests/lowering_snapshot_tests.rs
+expression: hir
+---
+HirFile {
+    file_id: FileId(
+        0,
+    ),
+    items: [
+        HirId(
+            0,
+        ),
+    ],
+    arena: HirArena {
+        nodes: [
+            Item(
+                Item {
+                    span: Span {
+                        start: 0,
+                        end: 59,
+                    },
+                    annotations: [],
+                    kind: Const(
+                        ConstDef {
+                            name: Name {
+                                span: Span {
+                                    start: 0,
+                                    end: 5,
+                                },
+                            },
+                            value: ExprId(
+                                15,
+                            ),
+                        },
+                    ),
+                },
+            ),
+        ],
+        bodies: [],
+        exprs: [
+            Expr {
+                span: Span {
+                    start: 13,
+                    end: 14,
+                },
+                kind: Name(
+                    Name {
+                        span: Span {
+                            start: 13,
+                            end: 14,
+                        },
+                    },
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 17,
+                    end: 18,
+                },
+                kind: Literal(
+                    Integer(
+                        1,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 13,
+                    end: 18,
+                },
+                kind: Binary {
+                    op: Gt,
+                    lhs: ExprId(
+                        0,
+                    ),
+                    rhs: ExprId(
+                        1,
+                    ),
+                },
+            },
+            Expr {
+                span: Span {
+                    start: 25,
+                    end: 26,
+                },
+                kind: Name(
+                    Name {
+                        span: Span {
+                            start: 25,
+                            end: 26,
+                        },
+                    },
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 29,
+                    end: 30,
+                },
+                kind: Literal(
+                    Integer(
+                        2,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 25,
+                    end: 30,
+                },
+                kind: Binary {
+                    op: Gt,
+                    lhs: ExprId(
+                        3,
+                    ),
+                    rhs: ExprId(
+                        4,
+                    ),
+                },
+            },
+            Expr {
+                span: Span {
+                    start: 20,
+                    end: 31,
+                },
+                kind: Quantifier {
+                    kind: Any,
+                    conditions: [
+                        ExprId(
+                            5,
+                        ),
+                    ],
+                },
+            },
+            Expr {
+                span: Span {
+                    start: 38,
+                    end: 39,
+                },
+                kind: Name(
+                    Name {
+                        span: Span {
+                            start: 38,
+                            end: 39,
+                        },
+                    },
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 42,
+                    end: 43,
+                },
+                kind: Literal(
+                    Integer(
+                        3,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 38,
+                    end: 43,
+                },
+                kind: Binary {
+                    op: Gt,
+                    lhs: ExprId(
+                        7,
+                    ),
+                    rhs: ExprId(
+                        8,
+                    ),
+                },
+            },
+            Expr {
+                span: Span {
+                    start: 33,
+                    end: 44,
+                },
+                kind: Quantifier {
+                    kind: One,
+                    conditions: [
+                        ExprId(
+                            9,
+                        ),
+                    ],
+                },
+            },
+            Expr {
+                span: Span {
+                    start: 52,
+                    end: 53,
+                },
+                kind: Name(
+                    Name {
+                        span: Span {
+                            start: 52,
+                            end: 53,
+                        },
+                    },
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 56,
+                    end: 57,
+                },
+                kind: Literal(
+                    Integer(
+                        4,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 52,
+                    end: 57,
+                },
+                kind: Binary {
+                    op: Gt,
+                    lhs: ExprId(
+                        11,
+                    ),
+                    rhs: ExprId(
+                        12,
+                    ),
+                },
+            },
+            Expr {
+                span: Span {
+                    start: 46,
+                    end: 58,
+                },
+                kind: Quantifier {
+                    kind: None,
+                    conditions: [
+                        ExprId(
+                            13,
+                        ),
+                    ],
+                },
+            },
+            Expr {
+                span: Span {
+                    start: 8,
+                    end: 59,
+                },
+                kind: Quantifier {
+                    kind: All,
+                    conditions: [
+                        ExprId(
+                            2,
+                        ),
+                        ExprId(
+                            6,
+                        ),
+                        ExprId(
+                            10,
+                        ),
+                        ExprId(
+                            14,
+                        ),
+                    ],
+                },
+            },
+        ],
+        matches: [],
+        match_arms: [],
+        conditions: [],
+    },
+    diagnostics: [],
+}
