@@ -10,7 +10,9 @@ mod r#match;
 
 pub use arena::HirArena;
 pub use body::{Body, Stmt};
-pub use expr::{BinaryOp, CallArg, ChainStep, ChainStepKind, Expr, ExprKind, Literal, UnaryOp};
+pub use expr::{
+    BinaryOp, CallArg, ChainStep, ChainStepKind, Expr, ExprKind, Literal, QuantifierKind, UnaryOp,
+};
 pub use file::HirFile;
 pub use id::{BodyId, ConditionId, ExprId, HirId, MatchArmId, MatchId};
 pub use item::{

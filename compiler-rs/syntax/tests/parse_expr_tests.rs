@@ -1,6 +1,6 @@
 // syntax/tests/parse_expr_tests.rs
 use infra::{DiagnosticBag, Interner};
-use syntax::cst::{CstNode, NodeId, NodeKind};
+use syntax::cst::{CstNode, NodeId, NodeKind, QuantifierKind};
 use syntax::{Lexer, Parser};
 
 fn parse_expr(source: &str) -> Vec<CstNode> {
@@ -201,12 +201,80 @@ fn parse_condition_equals() {
 }
 
 #[test]
-fn parse_condition_and_or() {
-    let nodes = parse_expr("(x > 1) or (x equals 1)");
-    let _or_node = nodes
+fn parse_quantifier_all_with_mixed_separators() {
+    let nodes = parse_expr("all (x > 1, y equals 2\n  z contains `ok`)");
+    let quantifier = nodes
         .iter()
-        .find(|n| matches!(n.kind, NodeKind::BinaryOp { .. }))
-        .expect("outer or not found");
+        .find_map(|node| match &node.kind {
+            NodeKind::Quantifier { kind, conditions } => Some((kind, conditions)),
+            _ => None,
+        })
+        .expect("all quantifier not found");
+    assert_eq!(*quantifier.0, QuantifierKind::All);
+    assert_eq!(quantifier.1.len(), 3);
+    assert!(
+        quantifier
+            .1
+            .iter()
+            .all(|id| matches!(nodes[id.0 as usize].kind, NodeKind::BinaryOp { .. }))
+    );
+}
+
+#[test]
+fn parse_nested_quantifiers() {
+    let nodes = parse_expr("any (all (x > 1, y > 2), none (z equals 0))");
+    let quantifiers = nodes
+        .iter()
+        .filter_map(|node| match node.kind {
+            NodeKind::Quantifier {
+                ref kind,
+                ref conditions,
+            } => Some((kind, conditions)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(quantifiers.len(), 3);
+    assert!(
+        quantifiers
+            .iter()
+            .any(|(kind, _)| **kind == QuantifierKind::Any)
+    );
+    assert!(
+        quantifiers
+            .iter()
+            .any(|(kind, _)| **kind == QuantifierKind::All)
+    );
+    assert!(
+        quantifiers
+            .iter()
+            .any(|(kind, _)| **kind == QuantifierKind::None)
+    );
+}
+
+#[test]
+fn reject_quantifier_conditions_separated_by_only_spaces() {
+    let mut interner = Interner::new();
+    let lexer = Lexer::new("all (x > 1 y > 2)", &mut interner);
+    let mut nodes = Vec::new();
+    let mut diagnostics = DiagnosticBag::new();
+    let mut parser = Parser::new(lexer, &mut nodes, &mut diagnostics, vfs::FileId(0));
+    assert!(parser.parse_expr(0).is_err());
+}
+
+#[test]
+fn parse_all_quantifier_kinds() {
+    for (source, expected) in [
+        ("all (x > 1)", QuantifierKind::All),
+        ("any (x > 1)", QuantifierKind::Any),
+        ("one (x > 1)", QuantifierKind::One),
+        ("none (x > 1)", QuantifierKind::None),
+    ] {
+        let nodes = parse_expr(source);
+        assert!(nodes.iter().any(|node| matches!(
+            node.kind,
+            NodeKind::Quantifier { kind, .. } if kind == expected
+        )));
+    }
 }
 
 #[test]

@@ -4,7 +4,8 @@ use infra::Span;
 use syntax::cst::{ChainStepKind as CstChainStepKind, NodeId, NodeKind};
 
 use crate::hir::{
-    BinaryOp, CallArg, ChainStep, ChainStepKind, Expr, ExprKind, Literal, Name, UnaryOp,
+    BinaryOp, CallArg, ChainStep, ChainStepKind, Expr, ExprKind, Literal, Name, QuantifierKind,
+    UnaryOp,
 };
 
 use super::context::LoweringContext;
@@ -54,6 +55,13 @@ impl<'a> LoweringContext<'a> {
                 let match_id = self.lower_match(span, scrutinee, arms);
                 ExprKind::Match(match_id)
             }
+            NodeKind::Quantifier { kind, conditions } => ExprKind::Quantifier {
+                kind: self.lower_quantifier_kind(kind),
+                conditions: conditions
+                    .into_iter()
+                    .map(|condition| self.lower_expr(condition))
+                    .collect(),
+            },
             other => {
                 self.report(
                     "unsupported-expression",
@@ -125,6 +133,15 @@ impl<'a> LoweringContext<'a> {
         };
         let span = Span::new(step.dot_token.start, end);
         ChainStep { span, kind }
+    }
+
+    fn lower_quantifier_kind(&mut self, kind: syntax::cst::QuantifierKind) -> QuantifierKind {
+        match kind {
+            syntax::cst::QuantifierKind::All => QuantifierKind::All,
+            syntax::cst::QuantifierKind::Any => QuantifierKind::Any,
+            syntax::cst::QuantifierKind::One => QuantifierKind::One,
+            syntax::cst::QuantifierKind::None => QuantifierKind::None,
+        }
     }
 
     fn lower_unary_op(&mut self, span: Span) -> UnaryOp {
@@ -201,8 +218,6 @@ impl<'a> LoweringContext<'a> {
 
 fn binary_op(operator: &str) -> Option<BinaryOp> {
     Some(match operator {
-        "or" => BinaryOp::Or,
-        "and" => BinaryOp::And,
         "<" => BinaryOp::Lt,
         "less" => BinaryOp::Less,
         ">" => BinaryOp::Gt,

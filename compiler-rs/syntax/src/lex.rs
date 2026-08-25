@@ -46,6 +46,11 @@ impl<'a> Lexer<'a> {
         self.regex_mode = mode;
     }
 
+    /// Return the source text covered by a valid token span.
+    pub(crate) fn source_text(&self, span: Span) -> Option<&str> {
+        self.source.get(span.start..span.end)
+    }
+
     /// Advance to the next token.
     /// Returns `Token { kind: Eof, .. }` after the source is exhausted.
     pub fn next_token(&mut self) -> Token {
@@ -450,9 +455,14 @@ mod tests {
     }
 
     #[test]
-    fn keyword_and() {
-        let tok = lex_one("and");
-        assert_eq!(tok.kind, TokenKind::And);
+    fn logical_words_are_contextual_identifiers() {
+        for word in ["and", "or", "all", "any", "one", "none"] {
+            assert_eq!(
+                lex_one(word).kind,
+                TokenKind::Identifier,
+                "{word} must remain contextual"
+            );
+        }
     }
 
     #[test]

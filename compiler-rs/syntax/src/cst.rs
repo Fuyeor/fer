@@ -15,6 +15,14 @@ pub struct CstNode {
     pub children: Vec<NodeId>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuantifierKind {
+    All,
+    Any,
+    One,
+    None,
+}
+
 #[derive(Debug, Clone)]
 pub enum NodeKind {
     /// The whole file: `Module { statements: ... }`
@@ -102,6 +110,10 @@ pub enum NodeKind {
     MatchExpr {
         scrutinee: NodeId,
         arms: Vec<NodeId>,
+    },
+    Quantifier {
+        kind: QuantifierKind,
+        conditions: Vec<NodeId>,
     },
     ConditionExpr {
         // Condition expression used as a pattern (e.g. `< 18`)

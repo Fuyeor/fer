@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use infra::{DiagnosticBag, Interner};
-use ir::hir::{ExprKind, FieldShape, HirNode, ItemKind};
+use ir::hir::{ExprKind, FieldShape, HirNode, ItemKind, QuantifierKind};
 use ir::lowering::{CstFile, lower_file};
 use syntax::{Lexer, Parser};
 use vfs::FileId;
@@ -78,6 +78,65 @@ fn lower_const_and_struct_field_shapes() {
         hir.arena.exprs[default.index()].kind,
         ExprKind::Name(_)
     ));
+    insta::assert_debug_snapshot!(hir);
+}
+
+#[test]
+fn lower_quantifier_expression() {
+    let hir = lower_source("ready = all (x > 1, y equals 2)");
+    assert!(hir.diagnostics.is_empty());
+    let item = match &hir.arena.nodes[hir.items[0].index()] {
+        HirNode::Item(item) => item,
+        other => panic!("expected item node, got {other:?}"),
+    };
+    let ItemKind::Const(constant) = &item.kind else {
+        panic!("expected constant item");
+    };
+    let expression = &hir.arena.exprs[constant.value.index()];
+    let ExprKind::Quantifier { kind, conditions } = &expression.kind else {
+        panic!("expected quantifier expression, got {expression:?}");
+    };
+    assert_eq!(*kind, QuantifierKind::All);
+    assert_eq!(conditions.len(), 2);
+    assert!(conditions.iter().all(|condition| matches!(
+        hir.arena.exprs[condition.index()].kind,
+        ExprKind::Binary { .. }
+    )));
+    insta::assert_debug_snapshot!(hir);
+}
+
+#[test]
+fn lower_all_quantifier_kinds() {
+    let hir = lower_source("ready = all (x > 1, any (y > 2), one (z > 3), none (w > 4))");
+    assert!(hir.diagnostics.is_empty());
+    let item = match &hir.arena.nodes[hir.items[0].index()] {
+        HirNode::Item(item) => item,
+        other => panic!("expected item node, got {other:?}"),
+    };
+    let ItemKind::Const(constant) = &item.kind else {
+        panic!("expected constant item");
+    };
+    let ExprKind::Quantifier { kind, conditions } = &hir.arena.exprs[constant.value.index()].kind
+    else {
+        panic!("expected outer quantifier");
+    };
+    assert_eq!(*kind, QuantifierKind::All);
+    assert_eq!(conditions.len(), 4);
+    let nested_kinds = conditions
+        .iter()
+        .filter_map(|condition| match &hir.arena.exprs[condition.index()].kind {
+            ExprKind::Quantifier { kind, .. } => Some(*kind),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        nested_kinds,
+        [
+            QuantifierKind::Any,
+            QuantifierKind::One,
+            QuantifierKind::None
+        ]
+    );
     insta::assert_debug_snapshot!(hir);
 }
 

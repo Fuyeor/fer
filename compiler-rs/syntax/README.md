@@ -25,7 +25,7 @@ syntax/
   parse/
     mod.rs     – Parser context, token stream, backtracking
     error.rs   – error reporting and recovery
-    expr.rs    – Pratt expression parser (atoms, unary, binary, calls, chains)
+    expr.rs     – Pratt expression parser (atoms, unary, quantifiers, binary, calls, chains)
     stmt.rs    – statement and declaration parser (function, struct, enum, const)
     module.rs  – import and export parser
     pattern.rs – pattern parser (match arms, destructuring) [not yet implemented]
@@ -45,8 +45,12 @@ syntax/
   ``#[derive = `Debug`, mode = stable]``.
 - Imports use `{ names } = @scope/pkg`; exports use `exports { names }`.
 - String literals use backticks and support multi-line with auto-dedent.
-- No `==`, `!=`, `&&`, `||`, `!` – the language uses English keywords
-  `equals`, `not`, `and`, `or`.
+- No `==`, `!=`, `&&`, `||`, `!` – conditions use comparison keywords such as
+  `equals`, `contains`, and `matches`, while logical combinations use quantifiers:
+  `all (...)`, `any (...)`, `one (...)`, or `none (...)`.
+- Quantifier conditions may be separated by commas or skipped trivia such as
+  newlines; nested quantifiers are valid. The former `and`, `or`, and `xor`
+  words are contextual identifiers rather than logical keywords.
 
 ## Current limitations
 
@@ -70,6 +74,8 @@ Tests are split by component:
 - `tests/parse_stmt_tests.rs` – statements and declarations
 - `tests/parse_module_tests.rs` – imports and exports
 - CST assertions are included with the corresponding parser tests.
+- Quantifier tests cover all four kinds, nested quantifiers, mixed comma/newline
+  separators, and contextual treatment of `and`/`or` as identifiers.
 
 Run with `cargo test -p syntax`.
 
