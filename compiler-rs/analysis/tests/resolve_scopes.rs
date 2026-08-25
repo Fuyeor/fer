@@ -69,7 +69,7 @@ fn rhs_is_resolved_before_first_local_binding() {
     assert_eq!(table.diagnostics[0].code, "undefined-name");
     let rhs_start = source.rfind("value").expect("RHS name");
     assert_eq!(
-        table.diagnostics[0].span,
+        table.diagnostics[0].primary,
         infra::Span::new(rhs_start, rhs_start + 5)
     );
 }
@@ -161,5 +161,5 @@ fn unresolved_name_reports_its_source_span() {
     let table = resolve(&hir, &source);
     assert_eq!(table.diagnostics.len(), 1);
     assert_eq!(table.diagnostics[0].code, "undefined-name");
-    assert_eq!(table.diagnostics[0].span, infra::Span::new(9, 16));
+    assert_eq!(table.diagnostics[0].primary, infra::Span::new(9, 16));
 }
