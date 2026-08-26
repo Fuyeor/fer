@@ -5,10 +5,23 @@ use ir::hir::{BinaryOp, HirId, HirNode, ItemKind};
 
 use super::TypeId;
 use super::check::Checker;
-use super::model::TypeKind;
-use crate::resolve::{DefTarget, LocalId};
+use super::model::{FunctionType, TypeKind};
+use crate::resolve::{BuiltinKind, DefTarget, LocalId};
 
 impl<'a> Checker<'a> {
+    pub(super) fn builtin_type(&mut self, builtin: BuiltinKind) -> TypeId {
+        match builtin {
+            BuiltinKind::Print => {
+                let parameter = self.store.unknown();
+                let return_type = self.store.unit();
+                self.store.intern(TypeKind::Function(FunctionType {
+                    params: vec![parameter],
+                    return_type,
+                }))
+            }
+        }
+    }
+
     pub(super) fn target_type(&mut self, target: DefTarget) -> TypeId {
         match target {
             DefTarget::Item(item_id) => self.infer_item(item_id),

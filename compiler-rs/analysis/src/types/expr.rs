@@ -55,11 +55,15 @@ impl<'a> Checker<'a> {
         let inferred = match expression.kind {
             ExprKind::Literal(literal) => self.infer_literal(literal, expected),
             ExprKind::Name(_) => {
-                let Some(target) = self.resolution.target(id).copied() else {
-                    self.report_invalid(expression.span);
-                    return self.store.error();
+                let type_id = if let Some(builtin) = self.resolution.builtin_for_expr(id) {
+                    self.builtin_type(builtin)
+                } else {
+                    let Some(target) = self.resolution.target(id).copied() else {
+                        self.report_invalid(expression.span);
+                        return self.store.error();
+                    };
+                    self.target_type(target)
                 };
-                let type_id = self.target_type(target);
                 expected.map_or(type_id, |expected| {
                     self.unify(type_id, expected, expression.span)
                 })

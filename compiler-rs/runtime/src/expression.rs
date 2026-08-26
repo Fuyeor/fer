@@ -1,6 +1,6 @@
 // compiler-rs/runtime/src/expression.rs
 
-use analysis::resolve::DefTarget;
+use analysis::resolve::{BuiltinKind, DefTarget};
 use ir::hir::{BinaryOp, ConditionKind, ExprKind, HirId, HirNode, Literal, UnaryOp};
 
 use crate::error::RuntimeError;
@@ -33,11 +33,14 @@ impl<'a> Interpreter<'a> {
             ExprKind::Unary { op, expr } => self.eval_unary(op, expr, expression.span),
             ExprKind::Binary { op, lhs, rhs } => self.eval_binary(op, lhs, rhs, expression.span),
             ExprKind::Call { callee, arguments } => {
-                let callee = self.eval_expr(callee)?;
                 let arguments = arguments
                     .into_iter()
                     .map(|argument| self.eval_expr(argument.value))
                     .collect::<Result<Vec<_>, _>>()?;
+                if let Some(builtin) = self.resolution.builtin_for_expr(callee) {
+                    return self.eval_builtin(builtin, arguments, expression.span);
+                }
+                let callee = self.eval_expr(callee)?;
                 let Value::Function(item_id) = callee else {
                     return Err(RuntimeError::TypeMismatch {
                         span: expression.span,
@@ -57,6 +60,27 @@ impl<'a> Interpreter<'a> {
                 span: expression.span,
                 feature: "error expression",
             }),
+        }
+    }
+
+    fn eval_builtin(
+        &mut self,
+        builtin: BuiltinKind,
+        arguments: Vec<Value>,
+        span: infra::Span,
+    ) -> Result<Value, RuntimeError> {
+        match builtin {
+            BuiltinKind::Print => {
+                if arguments.len() != 1 {
+                    return Err(RuntimeError::ArgumentCount {
+                        span,
+                        expected: 1,
+                        found: arguments.len(),
+                    });
+                }
+                self.output.push(arguments[0].to_string());
+                Ok(Value::Unit)
+            }
         }
     }
 

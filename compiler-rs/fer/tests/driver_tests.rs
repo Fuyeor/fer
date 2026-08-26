@@ -29,3 +29,25 @@ fn renders_structured_diagnostics_in_chinese() {
     let rendered = fer::render_diagnostics(&diagnostics, "zh-hans").expect("locale must render");
     assert_eq!(rendered[0].message, "无法解析名称 missing");
 }
+
+#[test]
+fn returns_builtin_output_from_an_automatic_main_entrypoint() {
+    let report =
+        run_source("main.fer", "main = () -> void { print(`hello`) }").expect("source must run");
+    assert_eq!(report.result, Value::Unit);
+    assert_eq!(report.output, vec![String::from("hello")]);
+}
+
+#[test]
+fn rejects_invalid_builtin_arity_before_runtime() {
+    let error = run_source("broken.fer", "print()")
+        .expect_err("print with no argument must fail during analysis");
+    let DriverError::Diagnostics(diagnostics) = error else {
+        panic!("expected structured diagnostics");
+    };
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "wrong-argument-count")
+    );
+}

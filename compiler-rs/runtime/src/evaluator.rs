@@ -17,6 +17,7 @@ pub struct Interpreter<'a> {
     pub(crate) constant_states: Vec<ConstantState>,
     pub(crate) frames: Vec<Frame>,
     pub(crate) call_stack: HashSet<HirId>,
+    pub(crate) output: Vec<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -50,6 +51,7 @@ impl<'a> Interpreter<'a> {
             constant_states: vec![ConstantState::Unvisited; hir.arena.nodes.len()],
             frames: Vec::new(),
             call_stack: HashSet::new(),
+            output: Vec::new(),
         }
     }
 
@@ -58,8 +60,13 @@ impl<'a> Interpreter<'a> {
         let result = self.eval_body(self.hir.module_body)?;
         Ok(ExecutionReport {
             result,
-            output: Vec::new(),
+            output: self.take_output(),
         })
+    }
+
+    /// Take all host-visible output produced since the previous extraction.
+    pub fn take_output(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.output)
     }
 
     /// Invoke one function item with positional runtime arguments.

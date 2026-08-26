@@ -255,3 +255,31 @@ fn unknown_type_reference_is_reported_as_an_analysis_diagnostic() {
             .any(|diagnostic| diagnostic.code == "unknown-type")
     );
 }
+
+#[test]
+fn builtin_print_returns_unit_for_a_string_argument() {
+    let (_, hir, table) = analyze("print(`hello`)");
+    let call = hir
+        .arena
+        .exprs
+        .iter()
+        .enumerate()
+        .find_map(|(index, expression)| {
+            matches!(expression.kind, ir::hir::ExprKind::Call { .. }).then_some(ExprId::new(index))
+        })
+        .expect("print call expression");
+
+    assert_expr_kind(&table, call, |kind| matches!(kind, TypeKind::Unit));
+    assert!(table.diagnostics.is_empty());
+}
+
+#[test]
+fn builtin_print_reports_wrong_argument_count() {
+    let (_, _, table) = analyze("print()");
+    assert!(
+        table
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "wrong-argument-count")
+    );
+}

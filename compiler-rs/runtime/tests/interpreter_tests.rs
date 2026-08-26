@@ -41,7 +41,7 @@ fn execute(source_text: &str) -> Result<ExecutionReport, RuntimeError> {
     let result = interpreter.run_function(function_id, Vec::new())?;
     Ok(ExecutionReport {
         result,
-        output: Vec::new(),
+        output: interpreter.take_output(),
     })
 }
 
@@ -77,4 +77,26 @@ fn reports_division_by_zero_without_panicking() {
     let error = execute("main = () -> i32 { 1 / 0 }").expect_err("division by zero must fail");
 
     assert!(matches!(error, RuntimeError::DivisionByZero { .. }));
+}
+
+#[test]
+fn prints_a_string_from_a_function_body() {
+    let result =
+        execute("main = () -> void { print(`hello`) }").expect("print builtin should execute");
+    assert_eq!(result.result, Value::Unit);
+    assert_eq!(result.output, vec![String::from("hello")]);
+}
+
+#[test]
+fn rejects_print_with_wrong_argument_count() {
+    let error =
+        execute("main = () -> void { print() }").expect_err("print with no argument must fail");
+    assert!(matches!(
+        error,
+        RuntimeError::ArgumentCount {
+            expected: 1,
+            found: 0,
+            ..
+        }
+    ));
 }

@@ -2,7 +2,7 @@
 
 mod support;
 
-use analysis::resolve::{DefTarget, resolve};
+use analysis::resolve::{BuiltinKind, DefTarget, resolve};
 use ir::hir::{ExprKind, HirNode, ItemKind, QuantifierKind};
 use support::{const_value, lower_source, name_expr_ids};
 
@@ -164,4 +164,29 @@ fn unresolved_name_reports_its_source_span() {
     assert_eq!(table.diagnostics.len(), 1);
     assert_eq!(table.diagnostics[0].code, "undefined-name");
     assert_eq!(table.diagnostics[0].primary, infra::Span::new(9, 16));
+}
+
+#[test]
+fn resolves_print_as_builtin_without_a_hir_target() {
+    let (source, hir) = lower_source("print(`hello`)");
+    let table = resolve(&hir, &source);
+    assert!(table.diagnostics.is_empty());
+
+    let print_expr = name_expr_ids(&hir, &source, "print")[0];
+    assert_eq!(table.target_for_expr(print_expr), None);
+    assert_eq!(table.builtin_for_expr(print_expr), Some(BuiltinKind::Print));
+}
+
+#[test]
+fn user_definition_takes_precedence_over_builtin_name() {
+    let (source, hir) = lower_source("print = () -> i64 { 1 }\nprint()");
+    let table = resolve(&hir, &source);
+    assert!(table.diagnostics.is_empty());
+
+    let print_expr = name_expr_ids(&hir, &source, "print")[0];
+    assert_eq!(table.builtin_for_expr(print_expr), None);
+    assert_eq!(
+        table.target_for_expr(print_expr),
+        Some(&DefTarget::Item(hir.items[0]))
+    );
 }

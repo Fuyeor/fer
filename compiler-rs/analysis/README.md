@@ -25,6 +25,10 @@ The resolver applies the following scope rules:
 
 Undefined references emit `undefined-name`. Diagnostics use stable English kebab-case codes and carry the relevant HIR source span.
 
+## Builtin value names
+
+Language builtins are recorded in a separate `ResolutionTable::builtin_calls` side table. They are not synthesized as HIR items and do not extend `DefTarget`, which keeps user declarations, runtime dispatch, and the value namespace explicit. The first builtin is `print`, with a one-argument `unknown -> void` signature; user-defined bindings take precedence over builtin lookup.
+
 ## Incremental query integration
 
 The analysis query is `RESOLVE_NAMES_QUERY` (`QueryId(2)`). The IR query IDs remain authoritative:

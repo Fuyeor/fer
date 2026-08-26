@@ -7,12 +7,13 @@ pub mod table;
 use infra::{Diagnostic, Span};
 use ir::hir::{ConditionKind, ExprKind, FieldShape, HirFile, HirNode, ItemKind, Name, Stmt};
 
+pub use crate::builtins::BuiltinKind;
 pub use scope::{LocalId, Scope, ScopeId};
 pub use table::{BindingId, DefTarget, Definition, LocalBinding, ResolutionTable};
 
 use self::error::{duplicate_definition, invalid_reference, undefined_name};
 use self::scope::ScopeTree;
-use self::table::Definition as DefinitionRecord;
+use self::table::{Definition as DefinitionRecord, ResolutionParts};
 
 /// Resolve names in a lowered HIR file without mutating the HIR.
 pub fn resolve_names(source: &str, hir: &HirFile) -> ResolutionTable {
@@ -31,6 +32,7 @@ struct Resolver<'a> {
     definitions: Vec<DefinitionRecord>,
     locals: Vec<LocalBinding>,
     expr_targets: Vec<Option<DefTarget>>,
+    builtin_calls: Vec<Option<BuiltinKind>>,
     assignment_locals: Vec<Option<LocalId>>,
     diagnostics: Vec<Diagnostic>,
     next_local: usize,
@@ -45,6 +47,7 @@ impl<'a> Resolver<'a> {
             definitions: Vec::new(),
             locals: Vec::new(),
             expr_targets: vec![None; hir.arena.exprs.len()],
+            builtin_calls: vec![None; hir.arena.exprs.len()],
             assignment_locals: vec![None; hir.arena.exprs.len()],
             diagnostics: Vec::new(),
             next_local: 0,
@@ -59,15 +62,16 @@ impl<'a> Resolver<'a> {
             self.resolve_item(item_id, module_scope);
         }
         self.resolve_body(self.hir.module_body, module_scope);
-        ResolutionTable::from_parts(
-            self.hir.file_id,
-            self.expr_targets,
-            self.assignment_locals,
-            self.definitions,
-            self.locals,
-            self.scopes.into_scopes(),
-            self.diagnostics,
-        )
+        ResolutionTable::from_parts(ResolutionParts {
+            file_id: self.hir.file_id,
+            expr_targets: self.expr_targets,
+            builtin_calls: self.builtin_calls,
+            assignment_locals: self.assignment_locals,
+            definitions: self.definitions,
+            locals: self.locals,
+            scopes: self.scopes.into_scopes(),
+            diagnostics: self.diagnostics,
+        })
     }
 
     fn predeclare_module_items(&mut self, scope: ScopeId) {
@@ -272,6 +276,10 @@ impl<'a> Resolver<'a> {
             return;
         };
         let Some(binding) = self.scopes.lookup(scope, &text) else {
+            if let Some(builtin) = BuiltinKind::from_name(&text) {
+                self.builtin_calls[expr_id.index()] = Some(builtin);
+                return;
+            }
             self.diagnostics.push(undefined_name(&text, name.span));
             return;
         };

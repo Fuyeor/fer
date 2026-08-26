@@ -53,7 +53,7 @@ pub fn run_source(path: &str, source_text: &str) -> Result<ExecutionReport, Driv
                 .run_function(item_id, Vec::new())
                 .map(|result| ExecutionReport {
                     result,
-                    output: Vec::new(),
+                    output: interpreter.take_output(),
                 })
         }
         None => interpreter.run(),

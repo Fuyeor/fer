@@ -1,5 +1,7 @@
 // compiler-rs/runtime/src/value.rs
 
+use std::fmt;
+
 use ir::hir::HirId;
 
 /// A runtime value produced by evaluating Fer HIR.
@@ -13,6 +15,21 @@ pub enum Value {
     Char(String),
     Regex(String),
     Function(HirId),
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unit => formatter.write_str("()"),
+            Self::Integer(value) => value.fmt(formatter),
+            Self::Float(value) => value.fmt(formatter),
+            Self::String(value) | Self::Char(value) | Self::Regex(value) => {
+                formatter.write_str(value)
+            }
+            Self::Bool(value) => value.fmt(formatter),
+            Self::Function(item) => write!(formatter, "<function:{}>", item.index()),
+        }
+    }
 }
 
 impl Value {

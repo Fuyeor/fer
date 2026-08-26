@@ -34,7 +34,9 @@ fn main() {
             for line in report.output {
                 println!("{line}");
             }
-            println!("{}", display_value(&report.result));
+            if report.result != Value::Unit {
+                println!("{}", report.result);
+            }
         }
         Err(error) => {
             let diagnostics = match error {
@@ -90,17 +92,4 @@ fn line_column(source: &str, byte_offset: usize) -> (usize, usize) {
         .rfind('\n')
         .map_or(prefix.len(), |index| prefix.len() - index - 1);
     (line, column + 1)
-}
-
-fn display_value(value: &Value) -> String {
-    match value {
-        Value::Unit => "()".to_owned(),
-        Value::Integer(value) => value.to_string(),
-        Value::Float(value) => value.to_string(),
-        Value::String(value) => value.clone(),
-        Value::Bool(value) => value.to_string(),
-        Value::Char(value) => value.clone(),
-        Value::Regex(value) => value.clone(),
-        Value::Function(item) => format!("<function:{}>", item.index()),
-    }
 }
