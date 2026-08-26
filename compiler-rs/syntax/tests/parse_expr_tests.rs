@@ -1,6 +1,6 @@
 // syntax/tests/parse_expr_tests.rs
 use infra::{DiagnosticBag, Interner};
-use syntax::cst::{CstNode, NodeId, NodeKind, QuantifierKind};
+use syntax::cst::{CstNode, InterpolatedPart, NodeId, NodeKind, QuantifierKind};
 use syntax::{Lexer, Parser};
 
 fn parse_expr(source: &str) -> Vec<CstNode> {
@@ -284,4 +284,28 @@ fn parse_condition_not() {
         .iter()
         .find(|n| matches!(n.kind, NodeKind::UnaryOp { .. }))
         .expect("UnaryOp not found");
+}
+
+#[test]
+fn parse_interpolated_string_with_name_and_expression() {
+    let nodes = parse_expr("`Hello, {name}! {1 + 1}`");
+    let interpolated = nodes
+        .iter()
+        .find_map(|node| {
+            let NodeKind::InterpolatedString { parts } = &node.kind else {
+                return None;
+            };
+            Some(parts)
+        })
+        .expect("interpolated string node");
+
+    assert!(matches!(&interpolated[0], InterpolatedPart::Text(text) if text == "Hello, "));
+    assert!(matches!(interpolated[1], InterpolatedPart::Expr(_)));
+    assert!(matches!(&interpolated[2], InterpolatedPart::Text(text) if text == "! "));
+    assert!(matches!(interpolated[3], InterpolatedPart::Expr(_)));
+    assert!(
+        nodes
+            .iter()
+            .any(|node| matches!(node.kind, NodeKind::BinaryOp { .. }))
+    );
 }

@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use infra::{DiagnosticBag, Interner};
-use ir::hir::{ExprKind, FieldShape, HirNode, ItemKind, QuantifierKind};
+use ir::hir::{ExprKind, FieldShape, HirNode, InterpolatedPart, ItemKind, QuantifierKind};
 use ir::lowering::{CstFile, lower_file};
 use syntax::{Lexer, Parser};
 use vfs::FileId;
@@ -198,4 +198,34 @@ fn lower_match_expression() {
     };
     assert_eq!(hir.arena.matches[match_id.index()].arms.len(), 3);
     assert_eq!(hir.arena.conditions.len(), 2);
+}
+
+#[test]
+fn lower_interpolated_string_parts() {
+    let hir = lower_source("message = `Hello, {name}! {1 + 1}`");
+    assert!(hir.diagnostics.is_empty());
+
+    let item = match &hir.arena.nodes[hir.items[0].index()] {
+        HirNode::Item(item) => item,
+        other => panic!("expected item node, got {other:?}"),
+    };
+    let ItemKind::Const(constant) = &item.kind else {
+        panic!("expected constant item");
+    };
+    let ExprKind::InterpolatedString { parts } = &hir.arena.exprs[constant.value.index()].kind
+    else {
+        panic!("expected interpolated string expression");
+    };
+
+    assert!(matches!(&parts[0], InterpolatedPart::Text(text) if text == "Hello, "));
+    assert!(matches!(&parts[1], InterpolatedPart::Expr(_)));
+    assert!(matches!(&parts[2], InterpolatedPart::Text(text) if text == "! "));
+    let InterpolatedPart::Expr(expression) = parts[3] else {
+        panic!("expected arithmetic interpolation");
+    };
+    assert!(matches!(
+        hir.arena.exprs[expression.index()].kind,
+        ExprKind::Binary { .. }
+    ));
+    insta::assert_debug_snapshot!(hir);
 }

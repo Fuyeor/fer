@@ -30,6 +30,9 @@ pub enum ExprKind {
         callee: ExprId,
         arguments: Vec<CallArg>,
     },
+    InterpolatedString {
+        parts: Vec<InterpolatedPart>,
+    },
     Chain {
         base: ExprId,
         steps: Vec<ChainStep>,
@@ -44,6 +47,13 @@ pub enum ExprKind {
         conditions: Vec<ExprId>,
     },
     Error,
+}
+
+/// One literal or expression segment in an interpolated string.
+#[derive(Debug, Clone, PartialEq)]
+pub enum InterpolatedPart {
+    Text(String),
+    Expr(ExprId),
 }
 
 /// Quantifier forms used to combine condition expressions.

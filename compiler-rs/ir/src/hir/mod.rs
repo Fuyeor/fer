@@ -11,7 +11,8 @@ mod r#match;
 pub use arena::HirArena;
 pub use body::{Body, Stmt};
 pub use expr::{
-    BinaryOp, CallArg, ChainStep, ChainStepKind, Expr, ExprKind, Literal, QuantifierKind, UnaryOp,
+    BinaryOp, CallArg, ChainStep, ChainStepKind, Expr, ExprKind, InterpolatedPart, Literal,
+    QuantifierKind, UnaryOp,
 };
 pub use file::HirFile;
 pub use id::{BodyId, ConditionId, ExprId, HirId, MatchArmId, MatchId};

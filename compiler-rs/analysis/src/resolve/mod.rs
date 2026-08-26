@@ -5,7 +5,9 @@ pub mod scope;
 pub mod table;
 
 use infra::{Diagnostic, Span};
-use ir::hir::{ConditionKind, ExprKind, FieldShape, HirFile, HirNode, ItemKind, Name, Stmt};
+use ir::hir::{
+    ConditionKind, ExprKind, FieldShape, HirFile, HirNode, InterpolatedPart, ItemKind, Name, Stmt,
+};
 
 pub use crate::builtins::BuiltinKind;
 pub use scope::{LocalId, Scope, ScopeId};
@@ -242,6 +244,13 @@ impl<'a> Resolver<'a> {
                 self.resolve_expr(callee, scope);
                 for argument in arguments {
                     self.resolve_expr(argument.value, scope);
+                }
+            }
+            ExprKind::InterpolatedString { parts } => {
+                for part in parts {
+                    if let InterpolatedPart::Expr(expr) = part {
+                        self.resolve_expr(expr, scope);
+                    }
                 }
             }
             ExprKind::Chain { base, steps } => {

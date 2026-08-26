@@ -190,3 +190,19 @@ fn user_definition_takes_precedence_over_builtin_name() {
         Some(&DefTarget::Item(hir.items[0]))
     );
 }
+
+#[test]
+fn resolves_names_inside_interpolated_strings() {
+    let (source, hir) = lower_source("name = `Fer`\nmessage = `Hello, {name}`");
+    let table = resolve(&hir, &source);
+    assert!(table.diagnostics.is_empty());
+
+    let name_reference = name_expr_ids(&hir, &source, "name")
+        .into_iter()
+        .next()
+        .expect("interpolation name reference");
+    assert_eq!(
+        table.target_for_expr(name_reference),
+        Some(&DefTarget::Item(hir.items[0]))
+    );
+}

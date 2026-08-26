@@ -1,0 +1,135 @@
+---
+source: compiler-rs/ir/tests/lowering_snapshot_tests.rs
+expression: hir
+---
+HirFile {
+    file_id: FileId(
+        0,
+    ),
+    items: [
+        HirId(
+            0,
+        ),
+    ],
+    module_body: BodyId(
+        0,
+    ),
+    arena: HirArena {
+        nodes: [
+            Item(
+                Item {
+                    span: Span {
+                        start: 0,
+                        end: 34,
+                    },
+                    annotations: [],
+                    kind: Const(
+                        ConstDef {
+                            name: Name {
+                                span: Span {
+                                    start: 0,
+                                    end: 7,
+                                },
+                            },
+                            value: ExprId(
+                                4,
+                            ),
+                        },
+                    ),
+                },
+            ),
+        ],
+        bodies: [
+            Body {
+                span: Span {
+                    start: 0,
+                    end: 34,
+                },
+                statements: [],
+            },
+        ],
+        exprs: [
+            Expr {
+                span: Span {
+                    start: 19,
+                    end: 23,
+                },
+                kind: Name(
+                    Name {
+                        span: Span {
+                            start: 19,
+                            end: 23,
+                        },
+                    },
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 27,
+                    end: 28,
+                },
+                kind: Literal(
+                    Integer(
+                        1,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 31,
+                    end: 32,
+                },
+                kind: Literal(
+                    Integer(
+                        1,
+                    ),
+                ),
+            },
+            Expr {
+                span: Span {
+                    start: 27,
+                    end: 32,
+                },
+                kind: Binary {
+                    op: Add,
+                    lhs: ExprId(
+                        1,
+                    ),
+                    rhs: ExprId(
+                        2,
+                    ),
+                },
+            },
+            Expr {
+                span: Span {
+                    start: 10,
+                    end: 34,
+                },
+                kind: InterpolatedString {
+                    parts: [
+                        Text(
+                            "Hello, ",
+                        ),
+                        Expr(
+                            ExprId(
+                                0,
+                            ),
+                        ),
+                        Text(
+                            "! ",
+                        ),
+                        Expr(
+                            ExprId(
+                                3,
+                            ),
+                        ),
+                    ],
+                },
+            },
+        ],
+        matches: [],
+        match_arms: [],
+        conditions: [],
+    },
+    diagnostics: [],
+}

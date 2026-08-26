@@ -1,7 +1,9 @@
 // compiler-rs/analysis/src/types/expr.rs
 
 use infra::{Diagnostic, DiagnosticValue, MessageId, Span};
-use ir::hir::{BinaryOp, ConditionKind, ExprKind, HirId, ItemKind, Literal, Stmt, UnaryOp};
+use ir::hir::{
+    BinaryOp, ConditionKind, ExprKind, HirId, InterpolatedPart, ItemKind, Literal, Stmt, UnaryOp,
+};
 
 use super::TypeId;
 use super::check::{Checker, ItemState};
@@ -75,6 +77,9 @@ impl<'a> Checker<'a> {
             ExprKind::Call { callee, arguments } => {
                 self.infer_call(callee, arguments, expected, expression.span)
             }
+            ExprKind::InterpolatedString { parts } => {
+                self.infer_interpolated_string(parts, expected, expression.span)
+            }
             ExprKind::Chain { base, steps } => {
                 self.infer_expr(base, None);
                 for step in steps {
@@ -109,6 +114,23 @@ impl<'a> Checker<'a> {
         };
         self.expr_types[id.index()] = Some(inferred);
         inferred
+    }
+
+    fn infer_interpolated_string(
+        &mut self,
+        parts: Vec<InterpolatedPart>,
+        expected: Option<TypeId>,
+        span: Span,
+    ) -> TypeId {
+        for part in parts {
+            if let InterpolatedPart::Expr(expr) = part {
+                self.infer_expr(expr, None);
+            }
+        }
+        let string_type = self.store.intern(TypeKind::String);
+        expected.map_or(string_type, |expected| {
+            self.unify(string_type, expected, span)
+        })
     }
 
     pub(super) fn infer_literal(&mut self, literal: Literal, expected: Option<TypeId>) -> TypeId {

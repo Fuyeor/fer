@@ -100,3 +100,11 @@ fn rejects_print_with_wrong_argument_count() {
         }
     ));
 }
+
+#[test]
+fn evaluates_name_and_expression_interpolations() {
+    let result =
+        execute("main = () -> string { name = `Fer` message = `Hello, {name}! {1 + 1}` message }")
+            .expect("interpolated string should execute");
+    assert_eq!(result.result, Value::String(String::from("Hello, Fer! 2")));
+}

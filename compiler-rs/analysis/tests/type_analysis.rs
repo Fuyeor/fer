@@ -283,3 +283,12 @@ fn builtin_print_reports_wrong_argument_count() {
             .any(|diagnostic| diagnostic.code == "wrong-argument-count")
     );
 }
+
+#[test]
+fn interpolated_strings_infer_as_string() {
+    let (_, hir, table) = analyze("message = `Hello, {1 + 1}`");
+    assert_expr_kind(&table, const_value(&hir, 0), |kind| {
+        matches!(kind, TypeKind::String)
+    });
+    assert!(table.diagnostics.is_empty());
+}

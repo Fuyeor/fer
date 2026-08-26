@@ -1,12 +1,15 @@
 // compiler-rs/runtime/src/expression.rs
 
 use analysis::resolve::{BuiltinKind, DefTarget};
-use ir::hir::{BinaryOp, ConditionKind, ExprKind, HirId, HirNode, Literal, UnaryOp};
+use ir::hir::{
+    BinaryOp, ConditionKind, ExprKind, HirId, HirNode, InterpolatedPart, Literal, UnaryOp,
+};
 
 use crate::error::RuntimeError;
 use crate::evaluator::Interpreter;
 use crate::ops::{evaluate_binary, evaluate_condition, values_equal};
 use crate::value::{Value, ValueKind};
+use syntax::normalize_multiline_string;
 
 impl<'a> Interpreter<'a> {
     pub(crate) fn eval_expr(&mut self, expr_id: ir::hir::ExprId) -> Result<Value, RuntimeError> {
@@ -50,6 +53,7 @@ impl<'a> Interpreter<'a> {
                 };
                 self.eval_function(item_id, arguments)
             }
+            ExprKind::InterpolatedString { parts } => self.eval_interpolated_string(parts),
             ExprKind::Chain { .. } | ExprKind::Index { .. } => Err(RuntimeError::Unsupported {
                 span: expression.span,
                 feature: "chain or index expression",
@@ -61,6 +65,20 @@ impl<'a> Interpreter<'a> {
                 feature: "error expression",
             }),
         }
+    }
+
+    fn eval_interpolated_string(
+        &mut self,
+        parts: Vec<InterpolatedPart>,
+    ) -> Result<Value, RuntimeError> {
+        let mut raw = String::new();
+        for part in parts {
+            match part {
+                InterpolatedPart::Text(text) => raw.push_str(&text),
+                InterpolatedPart::Expr(expr) => raw.push_str(&self.eval_expr(expr)?.to_string()),
+            }
+        }
+        Ok(Value::String(normalize_multiline_string(&raw)))
     }
 
     fn eval_builtin(
