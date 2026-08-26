@@ -129,3 +129,11 @@ User: struct {
   gender: Gender
 }
 ```
+
+## Compiler CLI
+
+The repository provides the `fer` compiler and interpreter CLI. Run a source file with `fer run <file.fer>`. Format one regular source file in place with `fer fmt <file.fer>`; use `fer fmt --check <file.fer>` in CI to return exit code `1` when canonical formatting would change the file, without modifying it. The `--check` flag may also follow the file operand.
+
+Formatting reuses the syntax-layer lossless formatter and never executes user code. It preserves comments, strings, interpolation spelling, regex bodies, line endings, and non-horizontal trivia; invalid or unbalanced source is rejected before any write. In-place formatting uses a same-directory temporary file and atomic replacement, while read-only files, symlinks, and non-regular files are rejected at the write boundary.
+
+For local development, invoke the binary through Cargo with `cargo run -p fer -- fmt path/to/file.fer` or `cargo run -p fer -- fmt --check path/to/file.fer`.
