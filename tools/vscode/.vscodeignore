@@ -4,5 +4,10 @@
 node_modules/**
 out/**/*.map
 test/**
+src/**
+scripts/**
 *.ts
+tsconfig.json
+generate_lavender_logo.py
+icon.svg
 npm-debug.log*
