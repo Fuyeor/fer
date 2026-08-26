@@ -1,12 +1,14 @@
-// syntax/src/formatter.rs
+// syntax/src/formatter/mod.rs
 
-use infra::{DiagnosticBag, Interner, Severity, Span};
+use infra::Span;
 use vfs::FileId;
 
 use crate::grammar::TokenKind;
-use crate::lex::Lexer;
 use crate::lossless::{LosslessLexError, LosslessTokenStream};
-use crate::parse::Parser;
+use crate::lossless_cst::{LosslessCstError, parse_lossless_cst};
+
+mod spacing;
+use spacing::rewrite_token_spacing;
 
 /// Formatting options for the conservative source formatter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,7 +41,7 @@ pub fn format_source(source: &str) -> Result<String, FormatError> {
     format_source_with_options(source, FormatOptions::default())
 }
 
-/// Format only indentation while preserving all other source bytes exactly.
+/// Format indentation and safe token-boundary spacing while preserving opaque source bytes.
 pub fn format_source_with_options(
     source: &str,
     options: FormatOptions,
@@ -49,38 +51,48 @@ pub fn format_source_with_options(
             width: options.indent_width,
         });
     }
-    let stream = LosslessTokenStream::from_source(source).map_err(FormatError::Lex)?;
-    let (events, opaque_ranges) = collect_layout_metadata(&stream)?;
-    validate_parse(source)?;
-    Ok(rewrite_line_indentation(
-        source,
-        &options,
-        &events,
-        &opaque_ranges,
+    let source_stream = LosslessTokenStream::from_source(source).map_err(FormatError::Lex)?;
+    let (events, opaque_ranges) = collect_layout_metadata(&source_stream)?;
+    let _cst = parse_lossless_cst(source, FileId(0)).map_err(format_cst_error)?;
+    let indented = rewrite_line_indentation(source, &options, &events, &opaque_ranges);
+    let indented_stream = LosslessTokenStream::from_source(&indented).map_err(FormatError::Lex)?;
+    let (_, spaced_opaque_ranges) = collect_layout_metadata(&indented_stream)?;
+    let spaced_cst = parse_lossless_cst(&indented, FileId(0)).map_err(format_cst_error)?;
+    Ok(rewrite_token_spacing(
+        &indented,
+        spaced_cst.tokens(),
+        &spaced_opaque_ranges,
     ))
 }
 
-/// Validate syntax before allowing the formatter to rewrite source bytes.
-fn validate_parse(source: &str) -> Result<(), FormatError> {
-    let mut interner = Interner::new();
-    let lexer = Lexer::new(source, &mut interner);
-    let mut nodes = Vec::new();
-    let mut diagnostics = DiagnosticBag::new();
-    let mut parser = Parser::new(lexer, &mut nodes, &mut diagnostics, FileId(0));
-    parser.parse_file().map_err(|error| FormatError::Parse {
-        span: error.span,
-        message: error.message,
-    })?;
-    if let Some(diagnostic) = diagnostics
-        .iter()
-        .find(|diagnostic| diagnostic.severity == Severity::Error)
-    {
-        return Err(FormatError::Parse {
-            span: diagnostic.primary,
-            message: diagnostic.code.to_owned(),
-        });
+/// Convert a lossless CST construction error into the formatter error contract.
+fn format_cst_error(error: LosslessCstError) -> FormatError {
+    match error {
+        LosslessCstError::Lex(error) => FormatError::Lex(error),
+        LosslessCstError::InvalidToken { span } => FormatError::InvalidToken { span },
+        LosslessCstError::Parse { span, message } => FormatError::Parse { span, message },
+        LosslessCstError::Diagnostics(mut diagnostics) => {
+            let diagnostic = diagnostics.pop();
+            diagnostic.map_or(
+                FormatError::Parse {
+                    span: Span::dummy(),
+                    message: "parser diagnostics prevented formatting".to_owned(),
+                },
+                |diagnostic| FormatError::Parse {
+                    span: diagnostic.primary,
+                    message: diagnostic.code.to_owned(),
+                },
+            )
+        }
+        LosslessCstError::InvalidNodeSpan { node, span, .. } => FormatError::Parse {
+            span,
+            message: format!("invalid CST node span for node {}", node.0),
+        },
+        LosslessCstError::InvalidNodeId { index, node } => FormatError::Parse {
+            span: Span::dummy(),
+            message: format!("invalid CST node id {} at arena index {}", node.0, index),
+        },
     }
-    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -283,12 +295,70 @@ mod tests {
     }
 
     #[test]
+    fn canonicalizes_spacing_and_is_idempotent() {
+        let source = "main=()->i64{\nanswer=40+2\nprint(answer,a=1)\n}\n";
+        let formatted = format_source(source).expect("valid source must format");
+        assert_eq!(
+            formatted,
+            "main = () -> i64 {\n  answer = 40 + 2\n  print(answer, a = 1)\n}\n"
+        );
+        assert_eq!(
+            format_source(&formatted).expect("formatted source must be idempotent"),
+            formatted
+        );
+    }
+
+    #[test]
+    fn distinguishes_import_paths_from_division() {
+        let source = "{main}=@scope/pkg\n{other}=./foo\nmain=()->i64{answer=-40/2}\n";
+        let formatted = format_source(source).expect("valid source must format");
+        assert_eq!(
+            formatted,
+            "{ main } = @scope/pkg\n{ other } = ./foo\nmain = () -> i64 { answer = -40 / 2 }\n"
+        );
+    }
+
+    #[test]
+    fn formats_quantifiers_without_changing_string_contents() {
+        let source = "main=()->bool{\nall(x>1,y<2)\nmessage=`a+b={x}`\n}\n";
+        let formatted = format_source(source).expect("valid source must format");
+        assert_eq!(
+            formatted,
+            "main = () -> bool {\n  all (x > 1, y < 2)\n  message = `a+b={x}`\n}\n"
+        );
+    }
+
+    #[test]
+    fn canonicalizes_declarations_access_calls_and_regex_safely() {
+        let source = "#[type=Manifest]Config=struct{name:string=`x` count:i64=0}\r\nmain=()->bool{\r\nvalue=foo[0].bar+arr[1]\r\ngroup=(40+2)\r\ncheck=not(value)\r\nall(value>0)\r\nmatched=value { matches /a + b/i { true } { false } } // keep  +  \r\n}\r\n";
+        let formatted = format_source(source).expect("valid source must format");
+        assert_eq!(
+            formatted,
+            "#[type = Manifest] Config = struct { name: string = `x` count: i64 = 0 }\r\nmain = () -> bool {\r\n  value = foo[0].bar + arr[1]\r\n  group = (40 + 2)\r\n  check = not (value)\r\n  all (value > 0)\r\n  matched = value { matches /a + b/i { true } { false } } // keep  +  \r\n}\r\n"
+        );
+        assert_eq!(
+            format_source(&formatted).expect("formatted source must be idempotent"),
+            formatted
+        );
+    }
+
+    #[test]
     fn preserves_comments_strings_and_crlf_line_endings() {
         let source = "main = () -> i64 {\r\nanswer = `text {not-code}` /* keep */\r\n}\r\n";
         let formatted = format_source(source).expect("balanced source must format");
         assert_eq!(
             formatted,
             "main = () -> i64 {\r\n  answer = `text {not-code}` /* keep */\r\n}\r\n"
+        );
+    }
+
+    #[test]
+    fn leaves_comment_separated_operator_gap_untouched() {
+        let source = "main=()->i64{\nanswer=40/*keep*/+2\n}\n";
+        let formatted = format_source(source).expect("valid source must format");
+        assert_eq!(
+            formatted,
+            "main = () -> i64 {\n  answer = 40/*keep*/+ 2\n}\n"
         );
     }
 
