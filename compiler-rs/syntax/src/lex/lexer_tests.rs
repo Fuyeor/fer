@@ -107,3 +107,23 @@ fn single_quote_is_error() {
     let tok = lex_one("'");
     assert_eq!(tok.kind, TokenKind::Error);
 }
+
+#[test]
+fn unicode_line_comment_is_scanned_without_panicking() {
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new("// It’s a UUID\n42", &mut interner);
+    let token = lexer.next_token();
+
+    assert_eq!(token.kind, TokenKind::IntLiteral);
+    assert_eq!(token.span, Span::new(17, 19));
+}
+
+#[test]
+fn unicode_block_comment_is_scanned_without_panicking() {
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new("/* keep — this */42", &mut interner);
+    let token = lexer.next_token();
+
+    assert_eq!(token.kind, TokenKind::IntLiteral);
+    assert_eq!(token.span, Span::new(19, 21));
+}

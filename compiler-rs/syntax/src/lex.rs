@@ -143,7 +143,7 @@ impl<'a> Lexer<'a> {
                     if self.peek_char() == Some('/') {
                         self.pos += 2;
                         while self.pos < self.source.len() && self.current_char() != '\n' {
-                            self.pos += 1;
+                            self.advance_char();
                         }
                         continue; // line comment
                     } else if self.peek_char() == Some('*') {
@@ -153,7 +153,7 @@ impl<'a> Lexer<'a> {
                                 self.pos += 2;
                                 break;
                             }
-                            self.pos += 1;
+                            self.advance_char();
                         }
                         continue; // block comment
                     }
@@ -189,7 +189,7 @@ impl<'a> Lexer<'a> {
                         // Line comment: skip until newline.
                         self.pos += 2;
                         while self.pos < self.source.len() && self.current_char() != '\n' {
-                            self.pos += 1;
+                            self.advance_char();
                         }
                     } else if self.peek_char() == Some('*') {
                         // Block comment: skip until */
@@ -199,7 +199,7 @@ impl<'a> Lexer<'a> {
                                 self.pos += 2;
                                 break;
                             }
-                            self.pos += 1;
+                            self.advance_char();
                         }
                     } else {
                         break; // division operator, not comment
@@ -212,19 +212,19 @@ impl<'a> Lexer<'a> {
 
     fn scan_regex_token(&mut self) -> Token {
         let start = self.pos;
-        self.pos += 1; // consume opening '/'
+        self.advance_char(); // consume opening '/'
         while self.pos < self.source.len() {
             let c = self.current_char();
             if c == '\\' {
                 self.pos += c.len_utf8();
                 if !self.is_eof() {
-                    self.pos += self.current_char().len_utf8();
+                    self.advance_char();
                 }
             } else if c == '/' {
-                self.pos += 1; // closing '/'
+                self.advance_char(); // closing '/'
                 // Scan flags
                 while self.pos < self.source.len() && self.current_char().is_ascii_alphabetic() {
-                    self.pos += 1;
+                    self.advance_char();
                 }
                 let span = Span::new(start, self.pos);
                 return Token {
@@ -233,7 +233,7 @@ impl<'a> Lexer<'a> {
                     symbol: None,
                 };
             } else {
-                self.pos += 1;
+                self.advance_char();
             }
         }
         // Unterminated regex
@@ -319,6 +319,13 @@ impl<'a> Lexer<'a> {
 
     fn current_char(&self) -> char {
         self.source[self.pos..].chars().next().unwrap_or('\0')
+    }
+
+    /// Advance the cursor by exactly one UTF-8 scalar value.
+    fn advance_char(&mut self) {
+        if !self.is_eof() {
+            self.pos += self.current_char().len_utf8();
+        }
     }
 
     fn peek_char(&self) -> Option<char> {
