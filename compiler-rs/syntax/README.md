@@ -22,9 +22,10 @@ The `syntax` crate provides the lexer and parser for the Fer programming languag
 syntax/
   grammar.rs   – TokenKind enum, keyword table, precedence table
   lex.rs       – Lexer (backtick strings, comments, regex mode, interned identifiers)
-  lossless.rs  – Source-owned token stream with exact trivia spans
-  formatter.rs – Conservative lossless indentation formatter
-  cst.rs       – CST node kinds and helper types (ChainExpr, NamedArg, etc.)
+  lossless.rs    – Source-owned token stream with exact trivia spans
+  lossless_cst.rs – CST snapshot and NodeId-to-token-range association
+  formatter/     – Conservative lossless indentation and spacing formatter
+  cst.rs         – CST node kinds and helper types (ChainExpr, NamedArg, etc.)
   parse/
     mod.rs     – Parser context, token stream, backtracking
     error.rs   – error reporting and recovery
@@ -60,8 +61,16 @@ syntax/
 - Match expressions are parsed into `MatchExpr` and `MatchArm` nodes, but
   semantic validation is deferred to later compiler layers.
 - The path comment (`/// @/...`) is not extracted and stored in CST.
-- Existing CST nodes still omit some concrete delimiters; the first formatter
-  therefore changes only line indentation and preserves all other source bytes.
+- `LosslessCst` keeps the semantic CST arena and source-owned token stream
+  together, with a validated `NodeId -> TokenRange` side table. The semantic
+  `CstNode` shape remains unchanged so lowering and analysis stay lossless-agnostic.
+- The formatter canonicalizes horizontal spacing around assignments, arrows,
+  arithmetic/comparison operators, commas, colons, braces, quantifier and `not`
+  parentheses, while keeping ordinary calls, grouping, indexing, member access,
+  import paths, and unary minus unspaced where required.
+- Formatting never rewrites gaps containing newlines or comments, and preserves
+  string/interpolation/regex spelling, comment bodies, line endings, and unknown
+  trivia. It validates lexical errors, parser errors, and brace balance before edits.
 - Import/export annotations are rejected explicitly; annotations currently
   target declarations and struct fields.
 - Error recovery is basic; synchronization token sets may be incomplete.
@@ -86,7 +95,7 @@ Run with `cargo test -p syntax`.
 
 - Integrate with the `query` incremental database: register `parse_file`
   as a cached query.
-- Associate lossless tokens with CST nodes so future formatter passes can
-  safely normalize separators, delimiters, and canonical spacing.
+- Extend association queries with concrete delimiter ownership when future
+  formatter passes need separator-aware rewrites beyond token-boundary spacing.
 - Implement the `migrate` transforms on top of the source-mapped CST.
 - Complete pattern parsing for match arms.

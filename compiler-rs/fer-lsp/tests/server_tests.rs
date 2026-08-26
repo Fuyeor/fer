@@ -143,7 +143,7 @@ fn publishes_diagnostics_for_unsaved_documents_and_clears_them_after_change() {
         "params": {
             "textDocument": { "uri": "file:///workspace/main.fer", "version": 3 },
             "contentChanges": [{
-                "text": "main = () -> i64 {\nanswer = 40 + 2\nanswer\n}\n"
+                "text": "main=()->i64{\nanswer=40+2\nanswer\n}\n"
             }]
         }
     }));
