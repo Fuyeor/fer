@@ -118,6 +118,11 @@ fn publishes_diagnostics_for_unsaved_documents_and_clears_them_after_change() {
     let first = lsp.wait_for_method("textDocument/publishDiagnostics");
     assert_eq!(first["params"]["version"], 1);
     assert_eq!(first["params"]["diagnostics"][0]["code"], "undefined-name");
+    assert_eq!(first["params"]["diagnostics"][0]["source"], "fer");
+    assert_eq!(
+        first["params"]["diagnostics"][0]["message"],
+        "cannot resolve name missing"
+    );
     assert_eq!(first["params"]["diagnostics"][0]["severity"], 1);
 
     lsp.send(json!({

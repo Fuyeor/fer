@@ -18,7 +18,9 @@
   ],
   "scripts": {
     "compile": "tsc -p ./",
-    "test": "node ./test/grammar.test.mjs",
+    "test": "npm run compile && node ./test/grammar.test.mjs && node ./test/server.test.mjs",
+    "prepare:server": "node ./scripts/prepare-server.mjs",
+    "package": "npm run compile && vsce package",
     "vscode:prepublish": "npm run compile"
   },
   "categories": [
@@ -181,6 +183,7 @@
   "devDependencies": {
     "@types/node": "^24.3.0",
     "@types/vscode": "^1.75.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "@vscode/vsce": "^3.6.0"
   }
 }

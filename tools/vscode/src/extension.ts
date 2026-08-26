@@ -7,15 +7,21 @@ import {
   type ServerOptions,
 } from 'vscode-languageclient/node';
 
+import { resolveBundledServer } from './server';
+
 let client: LanguageClient | undefined;
 
 /** Start the configured Fer language server for Fer documents. */
 export function activate(context: vscode.ExtensionContext): void {
   const configuration = vscode.workspace.getConfiguration('fer.server');
-  const command = configuration.get<string>('path', 'fer-lsp').trim();
+  const configuredCommand = configuration.get<string>('path', 'fer-lsp').trim();
   const args = configuration.get<string[]>('args', []);
-  if (command.length === 0) throw new Error('fer.server.path must not be empty');
+  if (configuredCommand.length === 0) throw new Error('fer.server.path must not be empty');
 
+  const command =
+    configuredCommand === 'fer-lsp'
+      ? (resolveBundledServer(context.extensionPath) ?? configuredCommand)
+      : configuredCommand;
   const serverOptions: ServerOptions = {
     command,
     args,
