@@ -1,13 +1,10 @@
-/// @/examples/example.fer
-{ candidates, score-value -> score } = ./constants
+// examples/example.fer
+score = 85
 
-Status: enum { nice, pass, failed }
-
-Candidate: struct {
-  id: i32
-  nickname: string
-  username: string
-  gender: enum { ai, female, male, nonbinary }
+Status = enum {
+  nice
+  pass
+  failed
 }
 
 result = score {
@@ -16,4 +13,4 @@ result = score {
   { Status.failed }
 }
 
-print(`{candidates[0]}'s score is {score}, result is {result}`)
+print(`score is {score}, result is {result}`)

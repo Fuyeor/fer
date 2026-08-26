@@ -1,6 +1,6 @@
-/// @/examples/constants.fer
-
-// define a constant value
+// examples/constants.fer
+// Define a constant value.
 score-value = 85
-// define a constant array
-candidates = [`Gemini`, `Qwen`, `DeepSeek`, `AI on Google search`]
+// Define representative candidate constants until array literals are supported.
+primary-candidate = `Gemini`
+secondary-candidate = `Qwen`

@@ -1,11 +1,10 @@
-/// @/examples/function.fer
-
+// examples/function.fer
 hello = (name: string) -> string {
   `Hello, {name}!`
 }
 print(hello(`world`)) // "Hello, world!"
 
-add = (a: int, b: int) -> struct { a: int, b: int, result: string } {
-  { a, b, result = `{a} + {b} = {a + b}` }
+add = (a: int, b: int) -> int {
+  a + b
 }
-print(add(a = 1, b = 2).result) // "1 + 2 = 3"
+print(add(a = 1, b = 2)) // "3"

@@ -132,8 +132,10 @@ User: struct {
 
 ## Compiler CLI
 
-The repository provides the `fer` compiler and interpreter CLI. Run a source file with `fer run <file.fer>`. Format one regular source file in place with `fer fmt <file.fer>`; use `fer fmt --check <file.fer>` in CI to return exit code `1` when canonical formatting would change the file, without modifying it. The `--check` flag may also follow the file operand.
+The repository provides the `fer` compiler and interpreter CLI. Run a source file with `fer run <file.fer>`. Format one regular Fer or FON source file in place with `fer fmt <file.fer|file.fon>`; use `fer fmt --check <file.fer|file.fon>` in CI to return exit code `1` when canonical formatting would change the file, without modifying it. The `--check` flag may also follow the file operand.
 
-Formatting reuses the syntax-layer lossless formatter and never executes user code. It preserves comments, strings, interpolation spelling, regex bodies, line endings, and non-horizontal trivia; invalid or unbalanced source is rejected before any write. In-place formatting uses a same-directory temporary file and atomic replacement, while read-only files, symlinks, and non-regular files are rejected at the write boundary.
+To format a workspace recursively, use `fer fmt --workspace [--check] [directory]`. The directory defaults to the current working directory. The command discovers regular `.fer` and `.fon` files, skips `.git`, `target`, and `node_modules`, validates every file before writing any file, and reports every changed path in `--check` mode. A successful workspace format uses same-directory temporary files, preserves permissions, and atomically replaces each changed file.
 
-For local development, invoke the binary through Cargo with `cargo run -p fer -- fmt path/to/file.fer` or `cargo run -p fer -- fmt --check path/to/file.fer`.
+Formatting never executes user code. The Fer and FON formatters preserve comments, strings, interpolation spelling, regex bodies, line endings, and non-horizontal trivia; invalid source is rejected before any write. Read-only files, symlinks, and non-regular files are rejected at the relevant boundary.
+
+For local development, invoke the binary through Cargo with `cargo run -p fer -- fmt path/to/file.fer`, `cargo run -p fer -- fmt --check path/to/file.fon`, or `cargo run -p fer -- fmt --workspace --check .`.
