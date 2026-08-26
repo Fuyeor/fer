@@ -108,3 +108,33 @@ fn evaluates_name_and_expression_interpolations() {
             .expect("interpolated string should execute");
     assert_eq!(result.result, Value::String(String::from("Hello, Fer! 2")));
 }
+
+#[test]
+fn evaluates_a_regex_match_predicate_with_flags() {
+    let result = execute(
+        "main = () -> string { value = `Fer Language` value { matches /fer language/i { `matched` } { `missed` } } }",
+    )
+    .expect("regex match should execute");
+
+    assert_eq!(result.result, Value::String(String::from("matched")));
+}
+
+#[test]
+fn evaluates_a_regex_match_predicate_without_matching() {
+    let result = execute(
+        "main = () -> string { value = `Rust Language` value { matches /fer language/i { `matched` } { `missed` } } }",
+    )
+    .expect("regex match should execute");
+
+    assert_eq!(result.result, Value::String(String::from("missed")));
+}
+
+#[test]
+fn rejects_an_unsupported_regex_flag() {
+    let error = execute(
+        "main = () -> string { value = `Fer` value { matches /fer/q { `matched` } { `missed` } } }",
+    )
+    .expect_err("unsupported regex flags must fail");
+
+    assert!(matches!(error, RuntimeError::Unsupported { .. }));
+}
