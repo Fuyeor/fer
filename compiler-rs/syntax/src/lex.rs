@@ -171,10 +171,7 @@ impl<'a> Lexer<'a> {
                 ':' => return self.single_char_token(TokenKind::Colon),
                 '@' => return self.single_char_token(TokenKind::At),
                 '#' => return self.single_char_token(TokenKind::Hash),
-                _ => {
-                    self.pos += 1;
-                    return self.error_token("unexpected character");
-                }
+                _ => return self.error_token("unexpected character"),
             }
         }
     }
@@ -219,7 +216,10 @@ impl<'a> Lexer<'a> {
         while self.pos < self.source.len() {
             let c = self.current_char();
             if c == '\\' {
-                self.pos += 2; // skip escaped char
+                self.pos += c.len_utf8();
+                if !self.is_eof() {
+                    self.pos += self.current_char().len_utf8();
+                }
             } else if c == '/' {
                 self.pos += 1; // closing '/'
                 // Scan flags
@@ -306,7 +306,9 @@ impl<'a> Lexer<'a> {
     fn error_token(&mut self, _msg: &str) -> Token {
         // Produce an Error token spanning the current character.
         let start = self.pos;
-        self.pos += 1; // skip the problematic char
+        if !self.is_eof() {
+            self.pos += self.current_char().len_utf8();
+        }
         // We could also store the error message, but for now it's just a token.
         Token {
             kind: TokenKind::Error,
