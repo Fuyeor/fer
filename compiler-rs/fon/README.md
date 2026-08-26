@@ -26,4 +26,8 @@ set_source_file(&database, file_id);
 let parsed: fon::ParsedFonSource = database.query(FON_PARSE_QUERY);
 ```
 
+## Lossless formatting
+
+`format_source` validates FON with the independent parser, then rewrites only canonical horizontal spacing and code indentation from source-backed token/trivia ranges. Comments, backtick strings, regular expressions, native atoms such as `@fer/std`, `.mit`, `0.1.0`, and `./docs/index.md`, CRLF line endings, and all non-horizontal trivia remain source-owned. Invalid parser diagnostics and error tokens fail fast before a rewrite is returned. The formatter does not perform scheme-aware field sorting, type inference, semantic migration, or path-comment injection; `manifest.fon` is handled as an ordinary FON source file. The `fer` CLI routes `.fon` files to this API and uses the Fer syntax formatter for `.fer` files.
+
 The adapter does not interpret Webroamer behavior, execute interpolation, or hard-code Fer schemes. Those decisions remain in the caller's scheme and lowering layers.

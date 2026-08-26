@@ -144,18 +144,7 @@ impl<'a> Parser<'a> {
             | TokenKind::GtEq => {
                 let op_token = self.current;
                 self.advance(); // consume operator
-                let rhs = if op_token.kind == TokenKind::Matches {
-                    if self.current_kind() != TokenKind::RegexLiteral {
-                        self.lexer.set_regex_mode(false);
-                        return Err(self.error("expected regex literal after matches"));
-                    }
-                    let regex_span = self.current_span();
-                    let node = self.push_node(NodeKind::LitRegex, regex_span, vec![]);
-                    self.advance(); // consume regex token
-                    node
-                } else {
-                    self.parse_expr(0)?
-                };
+                let rhs = self.parse_expr(0)?;
                 let span = Span::new(op_token.span.start, self.node_span(rhs).end);
                 Ok(self.push_node(
                     NodeKind::PatternCondition {
@@ -214,6 +203,10 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(self.push_node(NodeKind::LitString, token.span, vec![]))
             }
+            TokenKind::RegexLiteral => {
+                self.advance();
+                Ok(self.push_node(NodeKind::LitRegex, token.span, vec![]))
+            }
             TokenKind::StringStart => self.parse_interpolated_string(),
             TokenKind::TrueKw | TokenKind::FalseKw => {
                 let value = token.kind == TokenKind::TrueKw;
@@ -233,8 +226,76 @@ impl<'a> Parser<'a> {
                 // but the parentheses are just for grouping and need no CST node.
                 Ok(expr)
             }
+            TokenKind::LBracket => self.parse_array(),
+            TokenKind::LBrace => self.parse_object_literal(),
             _ => Err(self.error(format!("unexpected token {:?} in expression", token.kind))),
         }
+    }
+
+    /// Parse an array literal with comma or newline-separated elements.
+    fn parse_array(&mut self) -> Result<NodeId, ParseError> {
+        let open = self.current_span();
+        self.advance();
+        let mut elements = Vec::new();
+        while self.current_kind() != TokenKind::RBracket && self.current_kind() != TokenKind::Eof {
+            let element = self.parse_expr(0)?;
+            let end = self.node_span(element).end;
+            elements.push(element);
+            if !self.consume_sequence_separator(end)? {
+                break;
+            }
+        }
+        let close = self.current_span();
+        self.expect(TokenKind::RBracket)?;
+        let span = Span::new(open.start, close.end);
+        Ok(self.push_node(
+            NodeKind::Array {
+                elements: elements.clone(),
+            },
+            span,
+            elements,
+        ))
+    }
+
+    /// Parse an object literal with shorthand and `name = value` fields.
+    fn parse_object_literal(&mut self) -> Result<NodeId, ParseError> {
+        let open = self.current_span();
+        self.advance();
+        let mut fields = Vec::new();
+        while self.current_kind() != TokenKind::RBrace && self.current_kind() != TokenKind::Eof {
+            let name = self.current_span();
+            self.expect(TokenKind::Identifier)?;
+            let value = if self.current_kind() == TokenKind::Eq {
+                self.advance();
+                Some(self.parse_expr(0)?)
+            } else {
+                None
+            };
+            let end = value.map_or(name.end, |value| self.node_span(value).end);
+            let mut children = Vec::new();
+            if let Some(value) = value {
+                children.push(value);
+            }
+            let field = self.push_node(
+                NodeKind::ObjectField { name, value },
+                Span::new(name.start, end),
+                children,
+            );
+            fields.push(field);
+            if !self.consume_sequence_separator(end)? {
+                break;
+            }
+        }
+        let close = self.current_span();
+        self.expect(TokenKind::RBrace)?;
+        let span = Span::new(open.start, close.end);
+        Ok(self.push_node(
+            NodeKind::ObjectLiteral {
+                fields: fields.clone(),
+            },
+            span,
+            fields,
+        ))
     }
 
     // --- Postfix: call, index, chain ---

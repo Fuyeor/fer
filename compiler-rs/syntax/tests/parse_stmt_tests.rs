@@ -76,7 +76,7 @@ fn parse_expression_statement() {
 #[test]
 fn parse_struct_definition() {
     let nodes = parse_decl(
-        "Candidate = struct { id = 0 nickname: string = `guest` legacy = i32 required: i32 }",
+        "Candidate: struct { id = 0, nickname: string = `guest`, legacy = i32, required: i32 }",
     );
     let struct_node = find_node(&nodes, |k| matches!(k, NodeKind::StructDef { .. }))
         .expect("StructDef not found");
@@ -127,7 +127,7 @@ fn parse_struct_definition() {
 
 #[test]
 fn rejects_field_without_type_or_default() {
-    let error = parse_decl_result("Candidate = struct { invalid }")
+    let error = parse_decl_result("Candidate: struct { invalid }")
         .expect_err("a field without type or default must be rejected");
     assert!(error.message.contains("field type or default value"));
 }
@@ -135,7 +135,7 @@ fn rejects_field_without_type_or_default() {
 #[test]
 fn parse_annotations_on_declarations_and_fields() {
     let nodes = parse_decl(
-        "#[derive = `Debug`, mode = stable] Candidate = struct { #[required] id: i32 = 0 }",
+        "#[derive = `Debug`, mode = stable] Candidate: struct { #[required] id: i32 = 0 }",
     );
     let struct_node = find_node(&nodes, |kind| matches!(kind, NodeKind::StructDef { .. }))
         .expect("StructDef not found");
@@ -196,7 +196,7 @@ fn parse_annotations_on_other_declarations() {
     assert_eq!(annotations.len(), 1);
     assert_eq!(function.children.first(), Some(&annotations[0]));
 
-    let enum_nodes = parse_decl("#[closed] Status = enum { nice pass }");
+    let enum_nodes = parse_decl("#[closed] Status: enum { nice, pass }");
     let enum_node = find_node(&enum_nodes, |kind| matches!(kind, NodeKind::EnumDef { .. }))
         .expect("EnumDef not found");
     let NodeKind::EnumDef { annotations, .. } = &enum_node.kind else {
@@ -219,7 +219,7 @@ fn parse_annotations_on_other_declarations() {
 
 #[test]
 fn parse_enum_definition() {
-    let nodes = parse_decl("Status = enum { nice pass failed }");
+    let nodes = parse_decl("Status: enum { nice, pass, failed }");
     let enum_node =
         find_node(&nodes, |k| matches!(k, NodeKind::EnumDef { .. })).expect("EnumDef not found");
     if let NodeKind::EnumDef { variants, .. } = &enum_node.kind {

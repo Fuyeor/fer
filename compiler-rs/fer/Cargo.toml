@@ -8,6 +8,7 @@ description = "Fer compiler driver and interpreter CLI."
 [dependencies]
 analysis = { path = "../analysis" }
 diagnostics = { path = "../diagnostics" }
+fon = { path = "../fon" }
 infra = { workspace = true }
 ir = { workspace = true }
 query = { workspace = true }

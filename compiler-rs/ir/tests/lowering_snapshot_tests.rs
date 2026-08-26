@@ -56,7 +56,7 @@ fn rejects_invalid_cst_root_without_panicking() {
 #[test]
 fn lower_const_and_struct_field_shapes() {
     let hir = lower_source(
-        "total = 42\nConfig = struct { id: i32 name = `guest` limit: i32 = 5 legacy = Type }",
+        "total = 42\nConfig: struct { id: i32, name = `guest`, limit: i32 = 5, legacy = Type }",
     );
     assert!(hir.diagnostics.is_empty());
     assert_eq!(hir.items.len(), 2);

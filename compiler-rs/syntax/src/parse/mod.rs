@@ -153,6 +153,34 @@ impl<'a> Parser<'a> {
         self.nodes[id.0 as usize].span
     }
 
+    /// Check whether skipped trivia between two tokens contains a line break.
+    pub(crate) fn has_line_break_since(&self, previous_end: usize) -> bool {
+        self.lexer
+            .source_text(Span::new(previous_end, self.current_span().start))
+            .is_some_and(|gap| gap.contains(['\n', '\r']))
+    }
+
+    /// Consume one optional comma/newline separator and reject adjacent items without one.
+    pub(crate) fn consume_sequence_separator(
+        &mut self,
+        previous_end: usize,
+    ) -> Result<bool, ParseError> {
+        if self.current_kind() == TokenKind::Comma {
+            self.advance();
+            return Ok(true);
+        }
+        if matches!(
+            self.current_kind(),
+            TokenKind::RParen | TokenKind::RBracket | TokenKind::RBrace | TokenKind::Eof
+        ) {
+            return Ok(false);
+        }
+        if self.has_line_break_since(previous_end) {
+            return Ok(true);
+        }
+        Err(self.error("expected comma or newline between items"))
+    }
+
     /// Parse an identifier and push it as a CST node.
     pub(crate) fn parse_identifier(&mut self) -> Result<NodeId, ParseError> {
         let span = self.current_span();

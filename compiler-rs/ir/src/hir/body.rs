@@ -3,6 +3,7 @@
 use infra::Span;
 
 use super::id::{ExprId, HirId};
+use super::item::TypeRef;
 
 /// An indexed function or block body.
 #[derive(Debug, Clone, PartialEq)]
@@ -22,6 +23,7 @@ pub enum Stmt {
         span: Span,
         annotations: Vec<HirId>,
         target: ExprId,
+        type_annotation: Option<TypeRef>,
         value: ExprId,
     },
     Item(HirId),

@@ -102,6 +102,18 @@ impl<'a> Checker<'a> {
                 self.infer_expr(index, None);
                 self.store.unknown()
             }
+            ExprKind::Array(elements) => {
+                for element in elements {
+                    self.infer_expr(element, None);
+                }
+                self.store.unknown()
+            }
+            ExprKind::Object(fields) => {
+                for field in fields {
+                    self.infer_expr(field.value, None);
+                }
+                self.store.unknown()
+            }
             ExprKind::Match(match_id) => self.infer_match(match_id, expected, expression.span),
             ExprKind::Quantifier { conditions, .. } => {
                 for condition in conditions {

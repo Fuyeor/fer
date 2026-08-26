@@ -50,22 +50,32 @@ impl<'a> Parser<'a> {
                             return self.parse_enum_def_after_name(name, name_span, annotations);
                         }
                         _ => {
-                            // constant assignment: name = expr
+                            // Constant assignment: name = expr.
                             let value = self.parse_expr(0)?;
-                            let span = Span::new(
-                                self.declaration_start(&annotations, name_span.start),
-                                self.node_span(value).end,
-                            );
-                            let mut children = annotations.clone();
-                            children.extend([name, value]);
-                            return Ok(self.push_node(
-                                NodeKind::AssignStmt {
-                                    annotations,
-                                    target: name,
-                                    value,
-                                },
-                                span,
-                                children,
+                            return Ok(self.make_assignment(annotations, name, None, value));
+                        }
+                    }
+                }
+                TokenKind::Colon => {
+                    self.advance();
+                    match self.current_kind() {
+                        TokenKind::Struct => {
+                            self.advance();
+                            return self.parse_struct_def_after_name(name, name_span, annotations);
+                        }
+                        TokenKind::Enum => {
+                            self.advance();
+                            return self.parse_enum_def_after_name(name, name_span, annotations);
+                        }
+                        _ => {
+                            let type_annotation = self.parse_type()?;
+                            self.expect(TokenKind::Eq)?;
+                            let value = self.parse_expr(0)?;
+                            return Ok(self.make_assignment(
+                                annotations,
+                                name,
+                                Some(type_annotation),
+                                value,
                             ));
                         }
                     }
@@ -86,6 +96,36 @@ impl<'a> Parser<'a> {
         Ok(self.push_node(NodeKind::ExprStmt { expr }, span, vec![expr]))
     }
 
+    /// Build a constant assignment while retaining an optional type annotation.
+    fn make_assignment(
+        &mut self,
+        annotations: Vec<NodeId>,
+        target: NodeId,
+        type_annotation: Option<NodeId>,
+        value: NodeId,
+    ) -> NodeId {
+        let span = Span::new(
+            self.declaration_start(&annotations, self.node_span(target).start),
+            self.node_span(value).end,
+        );
+        let mut children = annotations.clone();
+        children.push(target);
+        if let Some(type_id) = type_annotation {
+            children.push(type_id);
+        }
+        children.push(value);
+        self.push_node(
+            NodeKind::AssignStmt {
+                annotations,
+                target,
+                type_annotation,
+                value,
+            },
+            span,
+            children,
+        )
+    }
+
     /// Parse a statement inside a block (expression or assignment).
     pub fn parse_stmt(&mut self) -> Result<NodeId, ParseError> {
         self.parse_declaration()
@@ -98,6 +138,29 @@ impl<'a> Parser<'a> {
         annotations: Vec<NodeId>,
     ) -> Result<NodeId, ParseError> {
         self.expect(TokenKind::LBrace)?;
+        let fields = self.parse_struct_fields()?;
+        let close_span = self.current_span();
+        self.expect(TokenKind::RBrace)?;
+        let span = Span::new(
+            self.declaration_start(&annotations, name_span.start),
+            close_span.end,
+        );
+        let mut children = annotations.clone();
+        children.push(name);
+        children.extend(fields.iter().copied());
+        Ok(self.push_node(
+            NodeKind::StructDef {
+                annotations,
+                name: name_span,
+                fields,
+            },
+            span,
+            children,
+        ))
+    }
+
+    /// Parse struct fields using the current Fer comma/newline separator rules.
+    fn parse_struct_fields(&mut self) -> Result<Vec<NodeId>, ParseError> {
         let mut fields = Vec::new();
         while self.current_kind() != TokenKind::RBrace && self.current_kind() != TokenKind::Eof {
             let field_annotations = self.parse_annotations()?;
@@ -145,28 +208,11 @@ impl<'a> Parser<'a> {
                 children,
             );
             fields.push(field_node);
-            if self.current_kind() == TokenKind::Comma {
-                self.advance();
+            if !self.consume_sequence_separator(end)? {
+                break;
             }
         }
-        let close_span = self.current_span();
-        self.expect(TokenKind::RBrace)?;
-        let span = Span::new(
-            self.declaration_start(&annotations, name_span.start),
-            close_span.end,
-        );
-        let mut children = annotations.clone();
-        children.push(name);
-        children.extend(fields.iter().copied());
-        Ok(self.push_node(
-            NodeKind::StructDef {
-                annotations,
-                name: name_span,
-                fields,
-            },
-            span,
-            children,
-        ))
+        Ok(fields)
     }
 
     fn parse_enum_def_after_name(
@@ -176,11 +222,7 @@ impl<'a> Parser<'a> {
         annotations: Vec<NodeId>,
     ) -> Result<NodeId, ParseError> {
         self.expect(TokenKind::LBrace)?;
-        let mut variants = Vec::new();
-        while self.current_kind() != TokenKind::RBrace && self.current_kind() != TokenKind::Eof {
-            let variant_name = self.parse_identifier()?;
-            variants.push(variant_name);
-        }
+        let variants = self.parse_enum_variants()?;
         let close_span = self.current_span();
         self.expect(TokenKind::RBrace)?;
         let span = Span::new(
@@ -201,13 +243,34 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    /// Parse enum variants using the current Fer comma/newline separator rules.
+    fn parse_enum_variants(&mut self) -> Result<Vec<NodeId>, ParseError> {
+        let mut variants = Vec::new();
+        while self.current_kind() != TokenKind::RBrace && self.current_kind() != TokenKind::Eof {
+            let variant = self.parse_identifier()?;
+            let end = self.node_span(variant).end;
+            variants.push(variant);
+            if !self.consume_sequence_separator(end)? {
+                break;
+            }
+        }
+        Ok(variants)
+    }
+
     /// Parse a block: `{ stmt* }`
     pub fn parse_block(&mut self) -> Result<NodeId, ParseError> {
         let open_span = self.current_span();
         self.expect(TokenKind::LBrace)?;
         let mut stmts = Vec::new();
         while self.current_kind() != TokenKind::RBrace && self.current_kind() != TokenKind::Eof {
-            match self.parse_declaration() {
+            let parsed = if self.current_kind() == TokenKind::LBrace {
+                let expr = self.parse_expr(0)?;
+                let span = self.node_span(expr);
+                Ok(self.push_node(NodeKind::ExprStmt { expr }, span, vec![expr]))
+            } else {
+                self.parse_declaration()
+            };
+            match parsed {
                 Ok(stmt) => stmts.push(stmt),
                 Err(_) => {
                     // Error recovery: skip to next synchronization point.
@@ -330,7 +393,37 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type(&mut self) -> Result<NodeId, ParseError> {
-        // For now, type is just an identifier.
-        self.parse_identifier()
+        let start = self.current_span().start;
+        match self.current_kind() {
+            TokenKind::Struct => {
+                self.advance();
+                self.expect(TokenKind::LBrace)?;
+                let fields = self.parse_struct_fields()?;
+                let close = self.current_span();
+                self.expect(TokenKind::RBrace)?;
+                Ok(self.push_node(
+                    NodeKind::AnonymousStructType {
+                        fields: fields.clone(),
+                    },
+                    Span::new(start, close.end),
+                    fields,
+                ))
+            }
+            TokenKind::Enum => {
+                self.advance();
+                self.expect(TokenKind::LBrace)?;
+                let variants = self.parse_enum_variants()?;
+                let close = self.current_span();
+                self.expect(TokenKind::RBrace)?;
+                Ok(self.push_node(
+                    NodeKind::AnonymousEnumType {
+                        variants: variants.clone(),
+                    },
+                    Span::new(start, close.end),
+                    variants,
+                ))
+            }
+            _ => self.parse_identifier(),
+        }
     }
 }

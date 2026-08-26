@@ -30,8 +30,8 @@ In Fer, all definitions are **immutable constants** by default. There are no var
 
 ### 4. Arrays
 
-- **Explicit Definition**: `array = [123, 456, 789]`
-- **Auto-completion Support**: While implicit arrays (space-separated) were deprecated in `v0.0.1` to prevent ambiguity, the IDE plugin provides smart completion to streamline writing.
+- **Definition**: `array = [123, 456, 789]`
+- **Separators**: Repeated array elements may use commas, newlines, or a mixture of both. Whitespace alone on one line is not an element separator.
 
 ### 5. Destructuring
 
@@ -127,13 +127,18 @@ User: struct {
   id: i64
   name: string
   gender: Gender
+  display-name = `guest`
 }
 ```
 
+A declaration uses `:` for an explicit type and `=` for a binding. Struct fields may be required (`name: string`), inferred from a default (for example, ``display-name = `guest```), or explicitly typed with a default (`id: i64 = 0`).
+
 ## Compiler CLI
 
-The repository provides the `fer` compiler and interpreter CLI. Run a source file with `fer run <file.fer>`. Format one regular source file in place with `fer fmt <file.fer>`; use `fer fmt --check <file.fer>` in CI to return exit code `1` when canonical formatting would change the file, without modifying it. The `--check` flag may also follow the file operand.
+The repository provides the `fer` compiler and interpreter CLI. Run a source file with `fer run <file.fer>`. Format one regular Fer or FON source file in place with `fer fmt <file.fer|file.fon>`; use `fer fmt --check <file.fer|file.fon>` in CI to return exit code `1` when canonical formatting would change the file, without modifying it. The `--check` flag may also follow the file operand.
 
-Formatting reuses the syntax-layer lossless formatter and never executes user code. It preserves comments, strings, interpolation spelling, regex bodies, line endings, and non-horizontal trivia; invalid or unbalanced source is rejected before any write. In-place formatting uses a same-directory temporary file and atomic replacement, while read-only files, symlinks, and non-regular files are rejected at the write boundary.
+To format a workspace recursively, use `fer fmt --workspace [--check] [directory]`. The directory defaults to the current working directory. The command discovers every regular `.fer` and `.fon` file, including `compiler/manifest.fon`, while skipping `.git`, `target`, and `node_modules`. It validates every discovered file before writing any file and reports every changed path in `--check` mode. A successful workspace format uses same-directory temporary files, preserves permissions, and atomically replaces each changed file.
 
-For local development, invoke the binary through Cargo with `cargo run -p fer -- fmt path/to/file.fer` or `cargo run -p fer -- fmt --check path/to/file.fer`.
+Formatting never executes user code or performs semantic source migration. The Fer and FON formatters preserve comments, strings, interpolation spelling, regex bodies, native literals, line endings, and non-horizontal trivia; invalid source is rejected before any write. Existing source-location comments such as `/// @/examples/file.fer` are preserved, while headerless files do not receive synthetic path comments. Read-only files, symlinks, and non-regular files are rejected at the relevant boundary.
+
+For local development, invoke the binary through Cargo with `cargo run -p fer -- fmt path/to/file.fer`, `cargo run -p fer -- fmt --check path/to/file.fon`, or `cargo run -p fer -- fmt --workspace --check .`.

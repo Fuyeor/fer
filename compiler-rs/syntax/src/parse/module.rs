@@ -13,7 +13,7 @@ impl<'a> Parser<'a> {
         while self.current_kind() != TokenKind::RBrace && self.current_kind() != TokenKind::Eof {
             let name_span = self.current_span();
             let name = self.parse_identifier()?;
-            let alias = if self.current_kind() == TokenKind::Eq {
+            let alias = if matches!(self.current_kind(), TokenKind::Eq | TokenKind::Arrow) {
                 self.advance();
                 Some(self.parse_identifier()?)
             } else {
@@ -37,7 +37,9 @@ impl<'a> Parser<'a> {
                 item_children,
             );
             items.push(item_node);
-            // No commas, just whitespace separation
+            if !self.consume_sequence_separator(item_span.end)? {
+                break;
+            }
         }
         self.expect(TokenKind::RBrace)?;
         self.expect(TokenKind::Eq)?;
@@ -54,7 +56,12 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::LBrace)?;
         let mut items = Vec::new();
         while self.current_kind() != TokenKind::RBrace && self.current_kind() != TokenKind::Eof {
-            items.push(self.parse_identifier()?);
+            let item = self.parse_identifier()?;
+            let end = self.node_span(item).end;
+            items.push(item);
+            if !self.consume_sequence_separator(end)? {
+                break;
+            }
         }
         let close = self.current_span();
         self.expect(TokenKind::RBrace)?;

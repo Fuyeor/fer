@@ -1,4 +1,4 @@
 name = @fer/compiler
 version = 0.0.0
-license = MIT
+license = .mit
 description = `The compiler for the Fer programming language.`

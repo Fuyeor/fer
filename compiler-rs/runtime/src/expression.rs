@@ -58,6 +58,10 @@ impl<'a> Interpreter<'a> {
                 span: expression.span,
                 feature: "chain or index expression",
             }),
+            ExprKind::Array(_) | ExprKind::Object(_) => Err(RuntimeError::Unsupported {
+                span: expression.span,
+                feature: "array or object literal",
+            }),
             ExprKind::Match(match_id) => self.eval_match(match_id, expression.span),
             ExprKind::Quantifier { kind, conditions } => self.eval_quantifier(kind, conditions),
             ExprKind::Error => Err(RuntimeError::Unsupported {

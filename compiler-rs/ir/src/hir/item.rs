@@ -43,6 +43,7 @@ pub enum ItemKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstDef {
     pub name: Name,
+    pub type_annotation: Option<TypeRef>,
     pub value: ExprId,
 }
 

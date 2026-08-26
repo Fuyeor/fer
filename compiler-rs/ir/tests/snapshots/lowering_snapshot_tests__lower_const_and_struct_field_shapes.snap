@@ -34,6 +34,7 @@ HirFile {
                                     end: 5,
                                 },
                             },
+                            type_annotation: None,
                             value: ExprId(
                                 0,
                             ),
@@ -44,22 +45,22 @@ HirFile {
             Field(
                 Field {
                     span: Span {
-                        start: 29,
-                        end: 36,
+                        start: 28,
+                        end: 35,
                     },
                     annotations: [],
                     name: Name {
                         span: Span {
-                            start: 29,
-                            end: 31,
+                            start: 28,
+                            end: 30,
                         },
                     },
                     shape: Required {
                         type_ref: TypeRef {
                             name: Name {
                                 span: Span {
-                                    start: 33,
-                                    end: 36,
+                                    start: 32,
+                                    end: 35,
                                 },
                             },
                         },
@@ -89,22 +90,22 @@ HirFile {
             Field(
                 Field {
                     span: Span {
-                        start: 52,
-                        end: 66,
+                        start: 53,
+                        end: 67,
                     },
                     annotations: [],
                     name: Name {
                         span: Span {
-                            start: 52,
-                            end: 57,
+                            start: 53,
+                            end: 58,
                         },
                     },
                     shape: Typed {
                         type_ref: TypeRef {
                             name: Name {
                                 span: Span {
-                                    start: 59,
-                                    end: 62,
+                                    start: 60,
+                                    end: 63,
                                 },
                             },
                         },
@@ -117,14 +118,14 @@ HirFile {
             Field(
                 Field {
                     span: Span {
-                        start: 67,
-                        end: 80,
+                        start: 69,
+                        end: 82,
                     },
                     annotations: [],
                     name: Name {
                         span: Span {
-                            start: 67,
-                            end: 73,
+                            start: 69,
+                            end: 75,
                         },
                     },
                     shape: Inferred {
@@ -138,7 +139,7 @@ HirFile {
                 Item {
                     span: Span {
                         start: 11,
-                        end: 82,
+                        end: 84,
                     },
                     annotations: [],
                     kind: Struct(
@@ -172,7 +173,7 @@ HirFile {
             Body {
                 span: Span {
                     start: 0,
-                    end: 82,
+                    end: 84,
                 },
                 statements: [],
             },
@@ -202,8 +203,8 @@ HirFile {
             },
             Expr {
                 span: Span {
-                    start: 65,
-                    end: 66,
+                    start: 66,
+                    end: 67,
                 },
                 kind: Literal(
                     Integer(
@@ -213,14 +214,14 @@ HirFile {
             },
             Expr {
                 span: Span {
-                    start: 76,
-                    end: 80,
+                    start: 78,
+                    end: 82,
                 },
                 kind: Name(
                     Name {
                         span: Span {
-                            start: 76,
-                            end: 80,
+                            start: 78,
+                            end: 82,
                         },
                     },
                 ),

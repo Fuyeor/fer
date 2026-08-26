@@ -107,3 +107,42 @@ fn single_quote_is_error() {
     let tok = lex_one("'");
     assert_eq!(tok.kind, TokenKind::Error);
 }
+
+#[test]
+fn unicode_line_comment_is_scanned_without_panicking() {
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new("// It’s a UUID\n42", &mut interner);
+    let token = lexer.next_token();
+
+    assert_eq!(token.kind, TokenKind::IntLiteral);
+    assert_eq!(token.span, Span::new(17, 19));
+}
+
+#[test]
+fn unicode_block_comment_is_scanned_without_panicking() {
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new("/* keep — this */42", &mut interner);
+    let token = lexer.next_token();
+
+    assert_eq!(token.kind, TokenKind::IntLiteral);
+    assert_eq!(token.span, Span::new(19, 21));
+}
+
+#[test]
+fn regex_literal_can_follow_an_assignment() {
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new("pattern = /a+/i", &mut interner);
+    assert_eq!(lexer.next_token().kind, TokenKind::Identifier);
+    assert_eq!(lexer.next_token().kind, TokenKind::Eq);
+    assert_eq!(lexer.next_token().kind, TokenKind::RegexLiteral);
+}
+
+#[test]
+fn division_after_an_assignment_is_not_a_regex_literal() {
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new("value = left / right", &mut interner);
+    assert_eq!(lexer.next_token().kind, TokenKind::Identifier);
+    assert_eq!(lexer.next_token().kind, TokenKind::Eq);
+    assert_eq!(lexer.next_token().kind, TokenKind::Identifier);
+    assert_eq!(lexer.next_token().kind, TokenKind::Slash);
+}

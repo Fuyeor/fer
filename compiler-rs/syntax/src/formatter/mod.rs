@@ -330,11 +330,11 @@ mod tests {
 
     #[test]
     fn canonicalizes_declarations_access_calls_and_regex_safely() {
-        let source = "#[type=Manifest]Config=struct{name:string=`x` count:i64=0}\r\nmain=()->bool{\r\nvalue=foo[0].bar+arr[1]\r\ngroup=(40+2)\r\ncheck=not(value)\r\nall(value>0)\r\nmatched=value { matches /a + b/i { true } { false } } // keep  +  \r\n}\r\n";
+        let source = "#[type=Manifest]Config=struct{name:string=`x`, count:i64=0}\r\nmain=()->bool{\r\nvalue=foo[0].bar+arr[1]\r\ngroup=(40+2)\r\ncheck=not(value)\r\nall(value>0)\r\nmatched=value { matches /a + b/i { true } { false } } // keep  +  \r\n}\r\n";
         let formatted = format_source(source).expect("valid source must format");
         assert_eq!(
             formatted,
-            "#[type = Manifest] Config = struct { name: string = `x` count: i64 = 0 }\r\nmain = () -> bool {\r\n  value = foo[0].bar + arr[1]\r\n  group = (40 + 2)\r\n  check = not (value)\r\n  all (value > 0)\r\n  matched = value { matches /a + b/i { true } { false } } // keep  +  \r\n}\r\n"
+            "#[type = Manifest] Config = struct { name: string = `x`, count: i64 = 0 }\r\nmain = () -> bool {\r\n  value = foo[0].bar + arr[1]\r\n  group = (40 + 2)\r\n  check = not (value)\r\n  all (value > 0)\r\n  matched = value { matches /a + b/i { true } { false } } // keep  +  \r\n}\r\n"
         );
         assert_eq!(
             format_source(&formatted).expect("formatted source must be idempotent"),

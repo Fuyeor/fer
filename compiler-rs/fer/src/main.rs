@@ -1,34 +1,32 @@
 // compiler-rs/fer/src/main.rs
 
 use std::env;
-use std::ffi::{OsStr, OsString};
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Write};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use diagnostics::RenderedDiagnostic;
 use fer::{DriverError, render_diagnostics, run_source};
 use runtime::Value;
-use syntax::format_source;
 
-const USAGE: &str = "usage: fer run <file.fer>\n       fer fmt [--check] <file.fer>";
-const FMT_CHECK_MESSAGE: &str = "would reformat";
-const TEMP_FILE_ATTEMPTS: usize = 32;
-static NEXT_TEMP_FILE: AtomicU64 = AtomicU64::new(0);
+mod formatting;
+use formatting::{format_file, format_workspace};
+
+const USAGE: &str = "usage: fer run <file.fer>\n       fer fmt [--check] <file.fer|file.fon>\n       fer fmt --workspace [--check] [directory]";
 
 #[derive(Debug)]
 enum Command {
     Run(PathBuf),
     Fmt { path: PathBuf, check: bool },
+    FmtWorkspace { root: PathBuf, check: bool },
 }
 
 fn main() {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
     let exit_code = match parse_arguments(&arguments) {
         Ok(Command::Run(path)) => run_command(&path),
-        Ok(Command::Fmt { path, check }) => format_command(&path, check),
+        Ok(Command::Fmt { path, check }) => format_file(&path, check),
+        Ok(Command::FmtWorkspace { root, check }) => format_workspace(&root, check),
         Err(message) => {
             eprintln!("{message}");
             2
@@ -55,19 +53,31 @@ fn parse_arguments(arguments: &[String]) -> Result<Command, &'static str> {
 /// Parse `fmt` flags without accepting ambiguous or silently ignored operands.
 fn parse_fmt_arguments(arguments: &[String]) -> Result<Command, &'static str> {
     let mut check = false;
+    let mut workspace = false;
     let mut path = None;
     for argument in arguments.iter().skip(1) {
-        if argument == "--check" {
-            if check {
-                return Err(USAGE);
+        match argument.as_str() {
+            "--check" => {
+                if check {
+                    return Err(USAGE);
+                }
+                check = true;
             }
-            check = true;
-            continue;
+            "--workspace" => {
+                if workspace {
+                    return Err(USAGE);
+                }
+                workspace = true;
+            }
+            _ if argument.starts_with('-') || path.is_some() => return Err(USAGE),
+            _ => path = Some(PathBuf::from(argument)),
         }
-        if argument.starts_with('-') || path.is_some() {
-            return Err(USAGE);
-        }
-        path = Some(PathBuf::from(argument));
+    }
+    if workspace {
+        return Ok(Command::FmtWorkspace {
+            root: path.unwrap_or_else(|| PathBuf::from(".")),
+            check,
+        });
     }
     path.map_or(Err(USAGE), |path| Ok(Command::Fmt { path, check }))
 }
@@ -119,93 +129,6 @@ fn run_command(path: &Path) -> i32 {
             1
         }
     }
-}
-
-/// Format a file in place or report whether it would change under `--check`.
-fn format_command(path: &Path, check: bool) -> i32 {
-    let source = match fs::read_to_string(path) {
-        Ok(source) => source,
-        Err(error) => {
-            eprintln!("fer: cannot read {}: {error}", path.display());
-            return 1;
-        }
-    };
-    let formatted = match format_source(&source) {
-        Ok(formatted) => formatted,
-        Err(error) => {
-            eprintln!("fer: cannot format {}: {error:?}", path.display());
-            return 1;
-        }
-    };
-    if formatted == source {
-        return 0;
-    }
-    if check {
-        eprintln!("fer: {} {FMT_CHECK_MESSAGE}", path.display());
-        return 1;
-    }
-    match write_file_atomically(path, &formatted) {
-        Ok(()) => 0,
-        Err(error) => {
-            eprintln!("fer: cannot write {}: {error}", path.display());
-            1
-        }
-    }
-}
-
-/// Replace a regular file through a same-directory temporary file and atomic rename.
-fn write_file_atomically(path: &Path, contents: &str) -> io::Result<()> {
-    let metadata = fs::symlink_metadata(path)?;
-    if !metadata.file_type().is_file() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "formatter requires a regular file",
-        ));
-    }
-    if metadata.permissions().readonly() {
-        return Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            "source file is read-only",
-        ));
-    }
-
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    let file_name = path.file_name().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, "source path has no file name")
-    })?;
-    let (temporary_path, mut temporary) = create_temporary_file(parent, file_name)?;
-    let result = (|| {
-        temporary.write_all(contents.as_bytes())?;
-        temporary.sync_all()?;
-        fs::set_permissions(&temporary_path, metadata.permissions())?;
-        drop(temporary);
-        fs::rename(&temporary_path, path)
-    })();
-    let _ = fs::remove_file(&temporary_path);
-    result
-}
-
-/// Create a same-directory temporary file without ever replacing an existing path.
-fn create_temporary_file(parent: &Path, file_name: &OsStr) -> io::Result<(PathBuf, File)> {
-    for _ in 0..TEMP_FILE_ATTEMPTS {
-        let sequence = NEXT_TEMP_FILE.fetch_add(1, Ordering::Relaxed);
-        let mut temporary_name = OsString::from(file_name);
-        temporary_name.push(format!(".fer-fmt-{}-{}.tmp", process::id(), sequence));
-        let temporary_path = parent.join(temporary_name);
-        match OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary_path)
-        {
-            Ok(file) => return Ok((temporary_path, file)),
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
-            Err(error) => return Err(error),
-        }
-    }
-    Err(io::Error::new(
-        io::ErrorKind::AlreadyExists,
-        "could not allocate a unique formatter temporary file",
-    ))
 }
 
 fn print_diagnostics(path: &str, source: &str, diagnostics: &[RenderedDiagnostic]) {
@@ -272,12 +195,26 @@ mod tests {
     }
 
     #[test]
+    fn parses_workspace_with_an_optional_root() {
+        assert!(matches!(
+            parse_arguments(&arguments(&["fmt", "--workspace"])),
+            Ok(Command::FmtWorkspace { root, check }) if root == Path::new(".") && !check
+        ));
+        assert!(matches!(
+            parse_arguments(&arguments(&["fmt", "--check", "--workspace", "workspace"])),
+            Ok(Command::FmtWorkspace { root, check }) if root == Path::new("workspace") && check
+        ));
+    }
+
+    #[test]
     fn rejects_missing_or_ambiguous_fmt_operands() {
         for values in [
             vec!["fmt"],
             vec!["fmt", "--check", "--check", "main.fer"],
             vec!["fmt", "main.fer", "other.fer"],
             vec!["fmt", "--unknown", "main.fer"],
+            vec!["fmt", "--workspace", "--workspace"],
+            vec!["fmt", "--workspace", "root", "other"],
         ] {
             assert!(parse_arguments(&arguments(&values)).is_err());
         }
