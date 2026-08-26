@@ -2,12 +2,13 @@
 
 mod diagnostics;
 mod document;
+mod formatting;
 mod position;
 mod server;
 
 pub use server::Backend;
 
-/// Run the diagnostics-only language server over standard input and output.
+/// Run the Fer language server over standard input and output.
 pub async fn run_stdio() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();

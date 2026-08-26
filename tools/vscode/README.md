@@ -1,6 +1,6 @@
 # Fer VS Code support
 
-This extension provides Fer language identification, the existing TextMate grammar, language configuration, the Fer Lavender theme, and a diagnostics-only Language Server Protocol client.
+This extension provides Fer language identification, the existing TextMate grammar, language configuration, the Fer Lavender theme, and a Language Server Protocol client with diagnostics and conservative document formatting.
 
 ## Local development
 
@@ -60,4 +60,6 @@ cannot resolve name missing fer(undefined-name)
 
 The `fer(undefined-name)` suffix is editor presentation of the LSP `source` and `code` fields; it is not part of the localized compiler message. The Chinese catalog currently renders the message as `无法解析名称 missing`.
 
-The extension intentionally does not advertise document formatting yet. The current compiler lexer and HIR discard trivia and layout, so a formatter would not be able to produce lossless, safe edits. Formatting will be added after a lossless token/CST representation and formatter are available.
+To test formatting, open a deliberately misindented valid document and run **Format Document** from the command palette, or enable `editor.formatOnSave` for the Fer language. The server returns one complete-document edit only when the formatted source differs from the current source. It returns no edit for already formatted input and refuses to rewrite invalid or unbalanced source.
+
+Document formatting is available through `textDocument/formatting`. The first formatter is intentionally conservative: it validates the source, normalizes only code-line indentation to the client tab/space preference, and preserves comments, string contents, interpolation spelling, line endings, and all other source bytes. It does not yet normalize separators or operator spacing because some concrete delimiters are not represented by the CST.

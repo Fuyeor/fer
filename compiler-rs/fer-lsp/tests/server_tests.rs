@@ -101,6 +101,10 @@ fn publishes_diagnostics_for_unsaved_documents_and_clears_them_after_change() {
     let initialize = lsp.receive();
     assert_eq!(initialize["id"], 1);
     assert_eq!(initialize["result"]["capabilities"]["textDocumentSync"], 1);
+    assert_eq!(
+        initialize["result"]["capabilities"]["documentFormattingProvider"],
+        true
+    );
 
     lsp.send(json!({ "jsonrpc": "2.0", "method": "initialized", "params": {} }));
     lsp.send(json!({
@@ -135,12 +139,50 @@ fn publishes_diagnostics_for_unsaved_documents_and_clears_them_after_change() {
 
     lsp.send(json!({
         "jsonrpc": "2.0",
+        "method": "textDocument/didChange",
+        "params": {
+            "textDocument": { "uri": "file:///workspace/main.fer", "version": 3 },
+            "contentChanges": [{
+                "text": "main = () -> i64 {\nanswer = 40 + 2\nanswer\n}\n"
+            }]
+        }
+    }));
+    let third = lsp.wait_for_method("textDocument/publishDiagnostics");
+    assert_eq!(third["params"]["version"], 3);
+    assert_eq!(third["params"]["diagnostics"], json!([]));
+
+    lsp.send(json!({
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "textDocument/formatting",
+        "params": {
+            "textDocument": { "uri": "file:///workspace/main.fer" },
+            "options": { "tabSize": 2, "insertSpaces": true }
+        }
+    }));
+    let formatting = lsp.receive();
+    assert_eq!(formatting["id"], 3);
+    assert_eq!(
+        formatting["result"][0]["range"]["start"],
+        json!({ "line": 0, "character": 0 })
+    );
+    assert_eq!(
+        formatting["result"][0]["range"]["end"],
+        json!({ "line": 4, "character": 0 })
+    );
+    assert_eq!(
+        formatting["result"][0]["newText"],
+        "main = () -> i64 {\n  answer = 40 + 2\n  answer\n}\n"
+    );
+
+    lsp.send(json!({
+        "jsonrpc": "2.0",
         "method": "textDocument/didClose",
         "params": { "textDocument": { "uri": "file:///workspace/main.fer" } }
     }));
-    let third = lsp.wait_for_method("textDocument/publishDiagnostics");
-    assert_eq!(third["params"]["version"], Value::Null);
-    assert_eq!(third["params"]["diagnostics"], json!([]));
+    let fourth = lsp.wait_for_method("textDocument/publishDiagnostics");
+    assert_eq!(fourth["params"]["version"], Value::Null);
+    assert_eq!(fourth["params"]["diagnostics"], json!([]));
 
     lsp.send(json!({ "jsonrpc": "2.0", "id": 2, "method": "shutdown", "params": null }));
     let shutdown = lsp.receive();
