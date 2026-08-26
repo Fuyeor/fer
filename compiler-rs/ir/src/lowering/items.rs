@@ -20,8 +20,9 @@ impl<'a> LoweringContext<'a> {
             NodeKind::AssignStmt {
                 annotations,
                 target,
+                type_annotation,
                 value,
-            } => self.lower_const(span, annotations, target, value),
+            } => self.lower_const(span, annotations, target, type_annotation, value),
             NodeKind::StructDef {
                 annotations,
                 name,
@@ -68,15 +69,21 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         annotation_ids: Vec<NodeId>,
         target: NodeId,
+        type_annotation: Option<NodeId>,
         value: NodeId,
     ) -> crate::hir::HirId {
         let annotations = self.lower_annotations(&annotation_ids);
         let name = self.lower_name(target, "constant name");
+        let type_annotation = type_annotation.map(|type_id| self.lower_type(type_id));
         let value = self.lower_expr(value);
         self.arena.alloc_node(HirNode::Item(Item {
             span,
             annotations,
-            kind: ItemKind::Const(ConstDef { name, value }),
+            kind: ItemKind::Const(ConstDef {
+                name,
+                type_annotation,
+                value,
+            }),
         }))
     }
 

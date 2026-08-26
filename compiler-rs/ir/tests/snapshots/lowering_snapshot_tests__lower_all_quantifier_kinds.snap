@@ -31,6 +31,7 @@ HirFile {
                                     end: 5,
                                 },
                             },
+                            type_annotation: None,
                             value: ExprId(
                                 15,
                             ),

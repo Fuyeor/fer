@@ -41,6 +41,8 @@ pub enum ExprKind {
         base: ExprId,
         index: ExprId,
     },
+    Array(Vec<ExprId>),
+    Object(Vec<ObjectField>),
     Match(MatchId),
     Quantifier {
         kind: QuantifierKind,
@@ -105,6 +107,13 @@ pub enum BinaryOp {
     Multiply,
     Divide,
     Remainder,
+}
+
+/// One object-literal field whose value is always represented by an expression.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ObjectField {
+    pub name: Name,
+    pub value: ExprId,
 }
 
 /// One positional or named function-call argument.

@@ -271,6 +271,16 @@ impl<'a> Resolver<'a> {
                 self.resolve_expr(base, scope);
                 self.resolve_expr(index, scope);
             }
+            ExprKind::Array(elements) => {
+                for element in elements {
+                    self.resolve_expr(element, scope);
+                }
+            }
+            ExprKind::Object(fields) => {
+                for field in fields {
+                    self.resolve_expr(field.value, scope);
+                }
+            }
             ExprKind::Match(match_id) => self.resolve_match(match_id, scope),
             ExprKind::Quantifier { conditions, .. } => {
                 for condition in conditions {

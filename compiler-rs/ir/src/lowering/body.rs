@@ -48,11 +48,13 @@ impl<'a> LoweringContext<'a> {
             NodeKind::AssignStmt {
                 annotations,
                 target,
+                type_annotation,
                 value,
             } => Stmt::Assign {
                 span,
                 annotations: self.lower_annotations(&annotations),
                 target: self.lower_expr(target),
+                type_annotation: type_annotation.map(|type_id| self.lower_type(type_id)),
                 value: self.lower_expr(value),
             },
             NodeKind::StructDef { .. }

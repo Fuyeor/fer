@@ -41,7 +41,23 @@ pub enum NodeKind {
         name: Span,
         fields: Vec<NodeId>,
     },
+    AnonymousStructType {
+        fields: Vec<NodeId>,
+    },
+    AnonymousEnumType {
+        variants: Vec<NodeId>,
+    },
     LitRegex,
+    Array {
+        elements: Vec<NodeId>,
+    },
+    ObjectLiteral {
+        fields: Vec<NodeId>,
+    },
+    ObjectField {
+        name: Span,
+        value: Option<NodeId>,
+    },
     EnumDef {
         annotations: Vec<NodeId>,
         name: Span,
@@ -69,6 +85,7 @@ pub enum NodeKind {
     AssignStmt {
         annotations: Vec<NodeId>,
         target: NodeId,
+        type_annotation: Option<NodeId>,
         value: NodeId,
     },
     NamedArg {

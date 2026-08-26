@@ -15,7 +15,7 @@ fn parse_module(source: &str) -> Vec<CstNode> {
 
 #[test]
 fn parse_import_with_item_nodes() {
-    let nodes = parse_module("{ a b = alias } = @fer/std");
+    let nodes = parse_module("{ a, b = alias } = @fer/std");
     let import = nodes
         .iter()
         .find(|n| matches!(n.kind, NodeKind::ImportDecl))
@@ -36,19 +36,19 @@ fn parse_import_with_item_nodes() {
 
 #[test]
 fn parse_import_at_slash() {
-    let nodes = parse_module("{ a b c } = @/example");
+    let nodes = parse_module("{ a, b, c } = @/example");
     assert!(nodes.iter().any(|n| matches!(n.kind, NodeKind::ImportDecl)));
 }
 
 #[test]
 fn parse_import_dot_slash() {
-    let nodes = parse_module("{ a b c } = ./example");
+    let nodes = parse_module("{ a, b, c } = ./example");
     assert!(nodes.iter().any(|n| matches!(n.kind, NodeKind::ImportDecl)));
 }
 
 #[test]
 fn parse_export() {
-    let nodes = parse_module("exports { io fs }");
+    let nodes = parse_module("exports { io, fs }");
     let _export = nodes
         .iter()
         .find(|n| matches!(n.kind, NodeKind::ExportDecl))

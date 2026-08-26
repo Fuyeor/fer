@@ -102,6 +102,8 @@ impl<'a> Lexer<'a> {
                 return self.make_token(TokenKind::Eof, self.pos, self.pos);
             }
             self.token_start = self.pos;
+            let regex_mode = self.regex_mode;
+            self.regex_mode = false;
             let c = self.current_char();
             match c {
                 '`' => return self.lex_string_literal(),
@@ -135,8 +137,7 @@ impl<'a> Lexer<'a> {
                 '+' => return self.single_char_token(TokenKind::Plus),
                 '*' => return self.single_char_token(TokenKind::Star),
                 '/' => {
-                    if self.regex_mode {
-                        self.regex_mode = false;
+                    if regex_mode {
                         return self.scan_regex_token();
                     }
                     // Check comments
@@ -292,6 +293,9 @@ impl<'a> Lexer<'a> {
 
     fn single_char_token(&mut self, kind: TokenKind) -> Token {
         self.pos += 1;
+        if kind == TokenKind::Eq {
+            self.regex_mode = true;
+        }
         self.make_token(kind, self.token_start, self.pos)
     }
 

@@ -7,7 +7,7 @@ use syntax::cst::{
 
 use crate::hir::{
     BinaryOp, CallArg, ChainStep, ChainStepKind, Expr, ExprKind, InterpolatedPart, Literal, Name,
-    QuantifierKind, UnaryOp,
+    ObjectField, QuantifierKind, UnaryOp,
 };
 
 use super::context::LoweringContext;
@@ -59,6 +59,18 @@ impl<'a> LoweringContext<'a> {
                 base: self.lower_expr(base),
                 index: self.lower_expr(index),
             },
+            NodeKind::Array { elements } => ExprKind::Array(
+                elements
+                    .into_iter()
+                    .map(|element| self.lower_expr(element))
+                    .collect(),
+            ),
+            NodeKind::ObjectLiteral { fields } => ExprKind::Object(
+                fields
+                    .into_iter()
+                    .map(|field| self.lower_object_field(field))
+                    .collect(),
+            ),
             NodeKind::MatchExpr { scrutinee, arms } => {
                 let match_id = self.lower_match(span, scrutinee, arms);
                 ExprKind::Match(match_id)
@@ -89,6 +101,40 @@ impl<'a> LoweringContext<'a> {
         match part {
             CstInterpolatedPart::Text(text) => InterpolatedPart::Text(text),
             CstInterpolatedPart::Expr(expr) => InterpolatedPart::Expr(self.lower_expr(expr)),
+        }
+    }
+
+    /// Lower one object-literal field while retaining shorthand intent.
+    fn lower_object_field(&mut self, id: NodeId) -> ObjectField {
+        let Some((kind, span)) = self.node_shape(id) else {
+            return ObjectField {
+                name: Name {
+                    span: Span::dummy(),
+                },
+                value: self.error_expr(Span::dummy()),
+            };
+        };
+        if let NodeKind::ObjectField { name, value } = kind {
+            let value = match value {
+                Some(value) => self.lower_expr(value),
+                None => self.arena.alloc_expr(Expr {
+                    span: name,
+                    kind: ExprKind::Name(Name { span: name }),
+                }),
+            };
+            return ObjectField {
+                name: Name { span: name },
+                value,
+            };
+        }
+        self.report(
+            "invalid-object-field",
+            format!("expected an ObjectField CST node, found {kind:?}"),
+            span,
+        );
+        ObjectField {
+            name: Name { span },
+            value: self.error_expr(span),
         }
     }
 
