@@ -207,13 +207,19 @@ fn desired_spacing(
     previous_text: &str,
     next_text: &str,
 ) -> &'static str {
-    if matches!(
-        next_kind,
-        TokenKind::RBrace | TokenKind::RBracket | TokenKind::RParen
-    ) || matches!(
-        previous_kind,
-        TokenKind::LBrace | TokenKind::LBracket | TokenKind::LParen
-    ) {
+    if next_kind == TokenKind::RBrace {
+        return if previous_kind == TokenKind::LBrace {
+            ""
+        } else {
+            " "
+        };
+    }
+    if previous_kind == TokenKind::LBrace {
+        return " ";
+    }
+    if matches!(next_kind, TokenKind::RBracket | TokenKind::RParen)
+        || matches!(previous_kind, TokenKind::LBracket | TokenKind::LParen)
+    {
         return "";
     }
     if previous_kind == TokenKind::Comma {
@@ -231,9 +237,6 @@ fn desired_spacing(
     ) || matches!(previous_kind, TokenKind::LessThan | TokenKind::GreaterThan)
         || matches!(next_kind, TokenKind::LessThan | TokenKind::GreaterThan)
     {
-        return " ";
-    }
-    if previous_kind == TokenKind::LBrace || next_kind == TokenKind::RBrace {
         return " ";
     }
     if previous_kind == TokenKind::Struct || previous_kind == TokenKind::Enum {
@@ -264,6 +267,10 @@ mod tests {
         assert_eq!(
             format_source("name=`Fuyeor`\n").expect("valid source must format"),
             "name = `Fuyeor`\n"
+        );
+        assert_eq!(
+            format_source("config={value=1}\n").expect("valid source must format"),
+            "config = { value = 1 }\n"
         );
     }
 
