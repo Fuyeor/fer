@@ -185,7 +185,7 @@ fn parse_annotations_on_declarations_and_fields() {
 
 #[test]
 fn parse_annotations_on_other_declarations() {
-    let function_nodes = parse_decl("#[inline] add(x: i32) { x }");
+    let function_nodes = parse_decl("#[inline] add = (x: i32) -> i32 { x }");
     let function = find_node(&function_nodes, |kind| {
         matches!(kind, NodeKind::FunctionDef { .. })
     })
@@ -229,7 +229,7 @@ fn parse_enum_definition() {
 
 #[test]
 fn parse_function_with_params() {
-    let nodes = parse_decl("add(x: i32, y: i32) -> i32 { x + y }");
+    let nodes = parse_decl("add = (x: i32, y: i32) -> i32 { x + y }");
     let func_node = find_node(&nodes, |k| matches!(k, NodeKind::FunctionDef { .. }))
         .expect("FunctionDef not found");
     if let NodeKind::FunctionDef { params, .. } = &func_node.kind {
@@ -244,4 +244,26 @@ fn parse_function_with_params() {
     } else {
         panic!("Expected FunctionDef");
     }
+}
+
+#[test]
+fn reject_legacy_function_declaration_syntax() {
+    assert!(parse_decl_result("add(x: i32) -> i32 { x }").is_err());
+}
+
+#[test]
+fn parse_zero_parameter_function_with_formal_binding() {
+    let nodes = parse_decl("main = () -> i64 { 42 }");
+    let function = find_node(&nodes, |kind| matches!(kind, NodeKind::FunctionDef { .. }))
+        .expect("FunctionDef not found");
+    let NodeKind::FunctionDef { params, .. } = &function.kind else {
+        panic!("Expected FunctionDef");
+    };
+    assert!(params.is_empty(), "expected no parameters");
+}
+
+#[test]
+fn preserve_parenthesized_constant_rhs_as_assignment() {
+    let nodes = parse_decl("answer = (40 + 2)");
+    assert!(find_node(&nodes, |kind| matches!(kind, NodeKind::AssignStmt { .. })).is_some());
 }

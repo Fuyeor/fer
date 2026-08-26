@@ -1,11 +1,13 @@
 // ir/src/lowering/expr.rs
 
 use infra::Span;
-use syntax::cst::{ChainStepKind as CstChainStepKind, NodeId, NodeKind};
+use syntax::cst::{
+    ChainStepKind as CstChainStepKind, InterpolatedPart as CstInterpolatedPart, NodeId, NodeKind,
+};
 
 use crate::hir::{
-    BinaryOp, CallArg, ChainStep, ChainStepKind, Expr, ExprKind, Literal, Name, QuantifierKind,
-    UnaryOp,
+    BinaryOp, CallArg, ChainStep, ChainStepKind, Expr, ExprKind, InterpolatedPart, Literal, Name,
+    QuantifierKind, UnaryOp,
 };
 
 use super::context::LoweringContext;
@@ -38,6 +40,12 @@ impl<'a> LoweringContext<'a> {
                 arguments: args
                     .into_iter()
                     .map(|argument| self.lower_call_arg(argument))
+                    .collect(),
+            },
+            NodeKind::InterpolatedString { parts } => ExprKind::InterpolatedString {
+                parts: parts
+                    .into_iter()
+                    .map(|part| self.lower_interpolated_part(part))
                     .collect(),
             },
             NodeKind::ChainExpr { base, steps } => ExprKind::Chain {
@@ -75,6 +83,13 @@ impl<'a> LoweringContext<'a> {
             span,
             kind: expression,
         })
+    }
+
+    fn lower_interpolated_part(&mut self, part: CstInterpolatedPart) -> InterpolatedPart {
+        match part {
+            CstInterpolatedPart::Text(text) => InterpolatedPart::Text(text),
+            CstInterpolatedPart::Expr(expr) => InterpolatedPart::Expr(self.lower_expr(expr)),
+        }
     }
 
     /// Lower a call argument, including the CST's named-argument wrapper.
@@ -204,11 +219,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn parse_string(&mut self, span: Span) -> String {
-        let source = self.source(span);
-        if source.starts_with('`') && source.ends_with('`') && source.len() >= 2 {
-            return source[1..source.len() - 1].to_owned();
-        }
-        source
+        syntax::decode_string_literal(&self.source(span))
     }
 
     pub(crate) fn source(&mut self, span: Span) -> String {

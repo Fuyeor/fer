@@ -32,6 +32,10 @@ Match expressions have a dedicated `MatchId` arena. Each `MatchArm` stores an op
 
 Logical condition groups lower to `ExprKind::Quantifier` with `QuantifierKind::{All, Any, One, None}` and an ordered `Vec<ExprId>`. The syntax accepts comma or skipped-trivia separators and nested quantifiers. The former `and`, `or`, and `xor` words are not lowered as logical binary operators.
 
+## Interpolated strings
+
+Interpolated strings lower to `ExprKind::InterpolatedString` with an ordered `Vec<InterpolatedPart>`. Text segments are owned strings, while embedded expressions reference the shared expression arena through `ExprId`; no recursive HIR pointers are introduced. The runtime evaluates all expression segments, formats their values, and applies Fer's multiline dedent and physical-line continuation rules to the combined template.
+
 ## Query integration
 
 Call `register_queries` once on a `query::Database`. Set an owned `CstFile` with `set_cst_file`, then read `LOWER_HIR_QUERY` as a `HirFile`. The query declares its dependency on `CST_INPUT_QUERY`, so replacing the input invalidates the cached HIR result.

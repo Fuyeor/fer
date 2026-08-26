@@ -1,0 +1,6 @@
+/// @/examples/runtime.fer
+// The first end-to-end Fer runtime example.
+main = () -> i64 {
+  answer = 40 + 2
+  answer
+}

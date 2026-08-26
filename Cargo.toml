@@ -14,3 +14,4 @@ vfs = { path = "compiler-rs/vfs" }
 syntax = { path = "compiler-rs/syntax" }
 query = { path = "compiler-rs/query" }
 ir = { path = "compiler-rs/ir" }
+fon-parser = { git = "https://github.com/Fuyeor/fon-parser.git", branch = "main" }

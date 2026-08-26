@@ -3,12 +3,22 @@
 use crate::grammar::{TokenKind, keyword_token};
 use infra::{Interner, Span, Symbol};
 
+mod string;
+use string::StringMode;
+pub use string::{decode_string_literal, normalize_multiline_string};
+
+#[cfg(test)]
+mod lexer_tests;
+
+#[cfg(test)]
+mod string_tests;
+
 /// A single token produced by the lexer.
 #[derive(Debug, Clone, Copy)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
-    /// Interned identifier for `Identifier` tokens, `None` otherwise.
+    /// Interned text for identifiers and string parts, `None` for other tokens.
     pub symbol: Option<Symbol>,
 }
 
@@ -21,6 +31,7 @@ pub struct Lexer<'a> {
     token_start: usize,
     /// true after 'matches' keyword
     regex_mode: bool,
+    string_mode: Option<StringMode>,
 }
 
 /// A saved lexer position that can be restored later.
@@ -29,6 +40,7 @@ pub struct LexerCheckpoint {
     pos: usize,
     token_start: usize,
     regex_mode: bool,
+    string_mode: Option<StringMode>,
 }
 
 impl<'a> Lexer<'a> {
@@ -39,6 +51,7 @@ impl<'a> Lexer<'a> {
             interner,
             token_start: 0,
             regex_mode: false,
+            string_mode: None,
         }
     }
 
@@ -54,7 +67,11 @@ impl<'a> Lexer<'a> {
     /// Advance to the next token.
     /// Returns `Token { kind: Eof, .. }` after the source is exhausted.
     pub fn next_token(&mut self) -> Token {
-        self.lex_normal()
+        match self.string_mode {
+            Some(StringMode::Text) => self.lex_string_text(),
+            Some(StringMode::Expression { .. }) => self.lex_string_expression(),
+            None => self.lex_normal(),
+        }
     }
 
     pub fn checkpoint(&self) -> LexerCheckpoint {
@@ -62,6 +79,7 @@ impl<'a> Lexer<'a> {
             pos: self.pos,
             token_start: self.token_start,
             regex_mode: self.regex_mode,
+            string_mode: self.string_mode,
         }
     }
 
@@ -69,6 +87,11 @@ impl<'a> Lexer<'a> {
         self.pos = ck.pos;
         self.token_start = ck.token_start;
         self.regex_mode = ck.regex_mode;
+        self.string_mode = ck.string_mode;
+    }
+
+    pub(crate) fn symbol_text(&self, symbol: Symbol) -> Option<&str> {
+        self.interner.lookup(symbol)
     }
 
     // -------------------- Normal mode --------------------
@@ -154,77 +177,6 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
-    }
-
-    fn lex_string_literal(&mut self) -> Token {
-        let open_pos = self.pos;
-        self.pos += 1; // consume opening backtick
-        let content_start = self.pos;
-
-        // Scan until closing backtick, handling escapes.
-        while self.pos < self.source.len() {
-            let c = self.current_char();
-            if c == '`' {
-                let end_pos = self.pos + 1;
-                let text = self.collect_text_and_crop_indent(content_start, self.pos);
-                self.pos += 1; // consume closing backtick
-                return Token {
-                    kind: TokenKind::StringLiteral,
-                    span: Span::new(open_pos, end_pos),
-                    symbol: Some(self.interner.intern(&text)),
-                };
-            } else if c == '\\' {
-                self.pos += 1; // skip '\'
-                self.pos += 1; // skip escaped char (including backtick, n, t, etc.)
-            } else {
-                self.pos += 1;
-            }
-        }
-        // Unterminated string
-        self.error_token("unterminated string literal")
-    }
-
-    /// Collect the text between text_start and end_pos, removing leading
-    /// indentation according to Fer's multi-line string rules.
-    /// Also processes escape sequences.
-    fn collect_text_and_crop_indent(&self, text_start: usize, end_pos: usize) -> String {
-        let raw = &self.source[text_start..end_pos];
-        // If the string starts with a newline (first char is '\n'), we treat as multiline.
-        let mut lines: Vec<&str> = raw.split('\n').collect();
-        // If the first line is empty (because string started with newline), remove it.
-        if lines
-            .first()
-            .is_some_and(|l| l.is_empty() || l.trim().is_empty())
-        {
-            // The first line might be just whitespace before the newline? Actually the opening backtick
-            // is followed by optional newline. If there's a newline immediately, raw starts with '\n'.
-            // We'll split, and if the first element is empty, that means string started with newline.
-            if !lines.is_empty() && lines[0].is_empty() {
-                lines.remove(0);
-            }
-        }
-        // Find minimum indentation among non-empty lines.
-        let min_indent = lines
-            .iter()
-            .filter(|l| !l.is_empty())
-            .map(|l| l.len() - l.trim_start().len())
-            .min()
-            .unwrap_or(0);
-        // Remove that many spaces from the start of each line.
-        let trimmed: Vec<&str> = lines
-            .iter()
-            .map(|l| {
-                if l.len() >= min_indent {
-                    &l[min_indent..]
-                } else {
-                    *l
-                }
-            })
-            .collect();
-        let joined = trimmed.join("\n");
-        // Process escape sequences (basic: backslash + anything).
-        // We'll do a simple pass to replace common escapes.
-        unescape(&joined)
     }
 
     // -------------------- Helpers --------------------
@@ -387,124 +339,5 @@ impl<'a> Lexer<'a> {
 
     fn is_eof(&self) -> bool {
         self.pos >= self.source.len()
-    }
-}
-
-fn unescape(s: &str) -> String {
-    // Very basic escape processing for now.
-    s.replace("\\`", "`")
-        .replace("\\n", "\n")
-        .replace("\\t", "\t")
-        .replace("\\\\", "\\")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::grammar::TokenKind;
-
-    fn lex_one(source: &str) -> Token {
-        let mut interner = Interner::new();
-        let mut lexer = Lexer::new(source, &mut interner);
-        lexer.next_token()
-    }
-
-    #[test]
-    fn eof_token() {
-        let tok = lex_one("");
-        assert_eq!(tok.kind, TokenKind::Eof);
-    }
-
-    #[test]
-    fn integer_literal() {
-        let tok = lex_one("42");
-        assert_eq!(tok.kind, TokenKind::IntLiteral);
-        assert_eq!(tok.span, Span::new(0, 2));
-    }
-
-    #[test]
-    fn float_literal() {
-        let tok = lex_one("3.14");
-        assert_eq!(tok.kind, TokenKind::FloatLiteral);
-    }
-
-    #[test]
-    fn identifier_kebab_case() {
-        let tok = lex_one("my-var");
-        assert_eq!(tok.kind, TokenKind::Identifier);
-        assert!(tok.symbol.is_some());
-    }
-
-    #[test]
-    fn identifier_with_underscore_allowed() {
-        let tok = lex_one("my_var"); // will be checked in semantic phase
-        assert_eq!(tok.kind, TokenKind::Identifier);
-    }
-
-    #[test]
-    fn identifier_capital_allowed() {
-        let tok = lex_one("StructName"); // valid for struct/enum names
-        assert_eq!(tok.kind, TokenKind::Identifier);
-    }
-
-    #[test]
-    fn keyword_enum() {
-        let tok = lex_one("enum");
-        assert_eq!(tok.kind, TokenKind::Enum);
-        assert!(tok.symbol.is_none());
-    }
-
-    #[test]
-    fn logical_words_are_contextual_identifiers() {
-        for word in ["and", "or", "all", "any", "one", "none"] {
-            assert_eq!(
-                lex_one(word).kind,
-                TokenKind::Identifier,
-                "{word} must remain contextual"
-            );
-        }
-    }
-
-    #[test]
-    fn simple_string() {
-        let mut interner = Interner::new();
-        let mut lexer = Lexer::new("`hello`", &mut interner);
-        let tok = lexer.next_token();
-        assert_eq!(tok.kind, TokenKind::StringLiteral);
-        if let Some(sym) = tok.symbol {
-            assert_eq!(interner.lookup(sym), Some("hello"));
-        } else {
-            panic!("Expected symbol");
-        }
-    }
-
-    #[test]
-    fn operators() {
-        assert_eq!(lex_one("+").kind, TokenKind::Plus);
-        assert_eq!(lex_one("-").kind, TokenKind::Minus);
-        assert_eq!(lex_one("*").kind, TokenKind::Star);
-        assert_eq!(lex_one("/").kind, TokenKind::Slash);
-        assert_eq!(lex_one("<").kind, TokenKind::Lt);
-        assert_eq!(lex_one(">").kind, TokenKind::Gt);
-        assert_eq!(lex_one("<=").kind, TokenKind::LtEq);
-        assert_eq!(lex_one(">=").kind, TokenKind::GtEq);
-        assert_eq!(lex_one("=").kind, TokenKind::Eq);
-        assert_eq!(lex_one("->").kind, TokenKind::Arrow);
-    }
-
-    #[test]
-    fn at_symbol() {
-        assert_eq!(lex_one("@").kind, TokenKind::At);
-    }
-
-    #[test]
-    fn hash_symbol() {
-        assert_eq!(lex_one("#").kind, TokenKind::Hash);
-    }
-
-    #[test]
-    fn single_quote_is_error() {
-        let tok = lex_one("'");
-        assert_eq!(tok.kind, TokenKind::Error);
     }
 }

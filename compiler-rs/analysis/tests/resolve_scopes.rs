@@ -2,7 +2,7 @@
 
 mod support;
 
-use analysis::resolve::{DefTarget, resolve};
+use analysis::resolve::{BuiltinKind, DefTarget, resolve};
 use ir::hir::{ExprKind, HirNode, ItemKind, QuantifierKind};
 use support::{const_value, lower_source, name_expr_ids};
 
@@ -27,7 +27,8 @@ fn resolves_top_level_forward_reference() {
 
 #[test]
 fn resolves_function_parameters_and_block_constants() {
-    let (source, hir) = lower_source("add(value: i32) { doubled = value + value doubled }");
+    let (source, hir) =
+        lower_source("add = (value: i32) -> i32 { doubled = value + value doubled }");
     let table = resolve(&hir, &source);
     assert!(table.diagnostics.is_empty());
 
@@ -63,13 +64,13 @@ fn resolves_function_parameters_and_block_constants() {
 
 #[test]
 fn rhs_is_resolved_before_first_local_binding() {
-    let (source, hir) = lower_source("compute() { value = value + 1 }");
+    let (source, hir) = lower_source("compute = () -> i32 { value = value + 1 }");
     let table = resolve(&hir, &source);
     assert_eq!(table.diagnostics.len(), 1);
     assert_eq!(table.diagnostics[0].code, "undefined-name");
     let rhs_start = source.rfind("value").expect("RHS name");
     assert_eq!(
-        table.diagnostics[0].span,
+        table.diagnostics[0].primary,
         infra::Span::new(rhs_start, rhs_start + 5)
     );
 }
@@ -92,7 +93,8 @@ fn duplicate_definitions_are_first_wins() {
 
 #[test]
 fn match_arm_scopes_allow_shadowing_without_duplicate_diagnostic() {
-    let source_text = "outer = 1\nrun() { result = outer { `A` { outer = 2 outer } { outer } } }";
+    let source_text =
+        "outer = 1\nrun = () -> void { result = outer { `A` { outer = 2 outer } { outer } } }";
     let (source, hir) = lower_source(source_text);
     let table = resolve(&hir, &source);
     assert!(table.diagnostics.is_empty());
@@ -161,5 +163,46 @@ fn unresolved_name_reports_its_source_span() {
     let table = resolve(&hir, &source);
     assert_eq!(table.diagnostics.len(), 1);
     assert_eq!(table.diagnostics[0].code, "undefined-name");
-    assert_eq!(table.diagnostics[0].span, infra::Span::new(9, 16));
+    assert_eq!(table.diagnostics[0].primary, infra::Span::new(9, 16));
+}
+
+#[test]
+fn resolves_print_as_builtin_without_a_hir_target() {
+    let (source, hir) = lower_source("print(`hello`)");
+    let table = resolve(&hir, &source);
+    assert!(table.diagnostics.is_empty());
+
+    let print_expr = name_expr_ids(&hir, &source, "print")[0];
+    assert_eq!(table.target_for_expr(print_expr), None);
+    assert_eq!(table.builtin_for_expr(print_expr), Some(BuiltinKind::Print));
+}
+
+#[test]
+fn user_definition_takes_precedence_over_builtin_name() {
+    let (source, hir) = lower_source("print = () -> i64 { 1 }\nprint()");
+    let table = resolve(&hir, &source);
+    assert!(table.diagnostics.is_empty());
+
+    let print_expr = name_expr_ids(&hir, &source, "print")[0];
+    assert_eq!(table.builtin_for_expr(print_expr), None);
+    assert_eq!(
+        table.target_for_expr(print_expr),
+        Some(&DefTarget::Item(hir.items[0]))
+    );
+}
+
+#[test]
+fn resolves_names_inside_interpolated_strings() {
+    let (source, hir) = lower_source("name = `Fer`\nmessage = `Hello, {name}`");
+    let table = resolve(&hir, &source);
+    assert!(table.diagnostics.is_empty());
+
+    let name_reference = name_expr_ids(&hir, &source, "name")
+        .into_iter()
+        .next()
+        .expect("interpolation name reference");
+    assert_eq!(
+        table.target_for_expr(name_reference),
+        Some(&DefTarget::Item(hir.items[0]))
+    );
 }

@@ -4,6 +4,7 @@ use infra::{Diagnostic, Span};
 use ir::hir::{ExprId, HirId};
 use vfs::FileId;
 
+use super::BuiltinKind;
 use super::scope::{LocalId, Scope, ScopeId};
 
 /// A typed identifier for one definition record.
@@ -48,11 +49,26 @@ pub struct LocalBinding {
     pub scope: ScopeId,
 }
 
+/// Owned parts used to construct a read-only resolution table.
+#[derive(Debug)]
+pub(crate) struct ResolutionParts {
+    pub(crate) file_id: FileId,
+    pub(crate) expr_targets: Vec<Option<DefTarget>>,
+    pub(crate) builtin_calls: Vec<Option<BuiltinKind>>,
+    pub(crate) assignment_locals: Vec<Option<LocalId>>,
+    pub(crate) definitions: Vec<Definition>,
+    pub(crate) locals: Vec<LocalBinding>,
+    pub(crate) scopes: Vec<Scope>,
+    pub(crate) diagnostics: Vec<Diagnostic>,
+}
+
 /// Read-only name-resolution output for one HIR file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolutionTable {
     pub file_id: FileId,
     pub expr_targets: Vec<Option<DefTarget>>,
+    pub builtin_calls: Vec<Option<BuiltinKind>>,
+    pub assignment_locals: Vec<Option<LocalId>>,
     pub definitions: Vec<Definition>,
     pub locals: Vec<LocalBinding>,
     pub scopes: Vec<Scope>,
@@ -70,27 +86,32 @@ impl ResolutionTable {
         self.target(id)
     }
 
+    /// Return the language builtin targeted by a name expression, if any.
+    pub fn builtin_for_expr(&self, id: ExprId) -> Option<BuiltinKind> {
+        self.builtin_calls.get(id.index()).copied().flatten()
+    }
+
+    /// Return the analysis-owned local introduced by an assignment target.
+    pub fn assignment_local(&self, id: ExprId) -> Option<LocalId> {
+        self.assignment_locals.get(id.index()).copied().flatten()
+    }
+
     /// Return a definition by its stable binding ID.
     pub fn definition(&self, id: BindingId) -> Option<&Definition> {
         self.definitions.get(id.index())
     }
 
     /// Build a table from the resolver's owned output vectors.
-    pub(crate) fn from_parts(
-        file_id: FileId,
-        expr_targets: Vec<Option<DefTarget>>,
-        definitions: Vec<Definition>,
-        locals: Vec<LocalBinding>,
-        scopes: Vec<Scope>,
-        diagnostics: Vec<Diagnostic>,
-    ) -> Self {
+    pub(crate) fn from_parts(parts: ResolutionParts) -> Self {
         Self {
-            file_id,
-            expr_targets,
-            definitions,
-            locals,
-            scopes,
-            diagnostics,
+            file_id: parts.file_id,
+            expr_targets: parts.expr_targets,
+            builtin_calls: parts.builtin_calls,
+            assignment_locals: parts.assignment_locals,
+            definitions: parts.definitions,
+            locals: parts.locals,
+            scopes: parts.scopes,
+            diagnostics: parts.diagnostics,
         }
     }
 }

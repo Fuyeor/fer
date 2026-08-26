@@ -7,6 +7,7 @@ pub mod module;
 pub mod pattern;
 pub mod quantifier;
 pub mod stmt;
+mod string;
 
 use infra::{DiagnosticBag, Span};
 use vfs::FileId;

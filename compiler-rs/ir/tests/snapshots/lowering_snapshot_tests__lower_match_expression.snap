@@ -11,6 +11,9 @@ HirFile {
             0,
         ),
     ],
+    module_body: BodyId(
+        3,
+    ),
     arena: HirArena {
         nodes: [
             Item(
@@ -87,6 +90,13 @@ HirFile {
                         ),
                     },
                 ],
+            },
+            Body {
+                span: Span {
+                    start: 0,
+                    end: 58,
+                },
+                statements: [],
             },
         ],
         exprs: [

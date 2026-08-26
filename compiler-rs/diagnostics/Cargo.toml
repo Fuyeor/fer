@@ -1,0 +1,10 @@
+# compiler-rs/diagnostics/Cargo.toml
+[package]
+name = "diagnostics"
+version.workspace = true
+edition.workspace = true
+description = "Structured diagnostics and FON locale catalog support for Fer."
+
+[dependencies]
+fon-parser = { workspace = true }
+infra = { workspace = true }

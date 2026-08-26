@@ -2,14 +2,17 @@
 
 pub mod support;
 
-use analysis::db::{RESOLVE_NAMES_QUERY, register_queries, set_cst_file};
+use analysis::db::{
+    COLLECT_TYPES_QUERY, RESOLVE_NAMES_QUERY, TYPE_ANALYSIS_QUERY, register_queries, set_cst_file,
+};
 use analysis::resolve::ResolutionTable;
+use analysis::types::{TypeCollection, TypeTable};
 use query::Database;
 use support::parse_cst;
 use vfs::SourceMap;
 
 fn database() -> Database {
-    let mut database = Database::new(SourceMap::new(), infra::Interner::new(), 3);
+    let mut database = Database::new(SourceMap::new(), infra::Interner::new(), 5);
     ir::register_queries(&mut database);
     register_queries(&mut database);
     database
@@ -30,6 +33,23 @@ fn resolve_query_caches_and_invalidates_with_cst_input() {
     assert_ne!(first, updated);
     assert_eq!(updated.diagnostics.len(), 1);
     assert_eq!(updated.diagnostics[0].code, "undefined-name");
+}
+
+#[test]
+fn type_queries_cache_and_invalidate_with_cst_input() {
+    let database = database();
+    set_cst_file(&database, parse_cst("answer = 1"));
+
+    let collected: TypeCollection = database.query(COLLECT_TYPES_QUERY);
+    let first: TypeTable = database.query(TYPE_ANALYSIS_QUERY);
+    assert_eq!(first.file_id, collected.file_id);
+
+    let cached: TypeTable = database.query(TYPE_ANALYSIS_QUERY);
+    assert_eq!(first, cached);
+
+    set_cst_file(&database, parse_cst("answer = `text`"));
+    let updated: TypeTable = database.query(TYPE_ANALYSIS_QUERY);
+    assert_ne!(first, updated);
 }
 
 #[test]
