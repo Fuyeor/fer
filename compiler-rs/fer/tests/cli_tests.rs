@@ -257,33 +257,37 @@ fn run_fmt_workspace(workspace: &TempFerWorkspace, check: bool) -> std::process:
 }
 
 #[test]
-fn fmt_workspace_skips_legacy_ferry_without_mutating_it() {
+fn fmt_workspace_formats_manifest_fon_without_a_special_case() {
     let workspace = TempFerWorkspace::new();
-    let legacy = "name = @fer/compiler\nversion = 0.0.0\nlicense = .mit\n";
-    workspace.write("compiler/ferry.fer", legacy);
-    workspace.write("src/main.fer", "answer=40+2\n");
+    let source = "name=@fer/compiler\nversion=0.0.0\nlicense=.mit\ndescription=`The compiler for the Fer programming language.`\n";
+    workspace.write("compiler/manifest.fon", source);
 
     let output = run_fmt_workspace(&workspace, false);
 
     assert!(output.status.success(), "stderr: {:?}", output.stderr);
     assert!(output.stderr.is_empty(), "stderr: {:?}", output.stderr);
-    assert_eq!(workspace.read("compiler/ferry.fer"), legacy);
-    assert_eq!(workspace.read("src/main.fer"), "answer = 40 + 2\n");
+    assert_eq!(
+        workspace.read("compiler/manifest.fon"),
+        "name = @fer/compiler\nversion = 0.0.0\nlicense = .mit\ndescription = `The compiler for the Fer programming language.`\n"
+    );
 }
 
 #[test]
-fn fmt_rejects_legacy_ferry_as_a_single_file() {
+fn fmt_formats_manifest_fon_as_a_regular_single_file() {
     let workspace = TempFerWorkspace::new();
-    let legacy = "name = @fer/compiler\nversion = 0.0.0\nlicense = .mit\n";
-    let path = workspace.write("compiler/ferry.fer", legacy);
+    let source = "name=@fer/compiler\nversion=0.0.0\nlicense=.mit\n";
+    let path = workspace.write("manifest.fon", source);
     let output = Command::new(env!("CARGO_BIN_EXE_fer"))
-        .args(["fmt", path.to_str().expect("legacy path must be UTF-8")])
+        .args(["fmt", path.to_str().expect("manifest path must be UTF-8")])
         .output()
         .expect("fer binary must start");
 
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("legacy compiler/ferry.fer"));
-    assert_eq!(workspace.read("compiler/ferry.fer"), legacy);
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    assert!(output.stderr.is_empty(), "stderr: {:?}", output.stderr);
+    assert_eq!(
+        workspace.read("manifest.fon"),
+        "name = @fer/compiler\nversion = 0.0.0\nlicense = .mit\n"
+    );
 }
 
 #[test]
@@ -418,10 +422,6 @@ fn fmt_workspace_check_reports_repository_source_differences_without_errors() {
     assert!(output.stdout.is_empty(), "stdout: {:?}", output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("condition.fer"), "stderr: {stderr}");
-    assert!(
-        !stderr.contains("ferry.fer"),
-        "legacy ferry must be excluded: {stderr}"
-    );
     assert!(
         !stderr.contains("cannot "),
         "workspace check must not fail validation: {stderr}"

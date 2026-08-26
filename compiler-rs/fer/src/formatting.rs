@@ -15,12 +15,6 @@ static NEXT_TEMP_FILE: AtomicU64 = AtomicU64::new(0);
 
 /// Format one source file in place without invoking Fer analysis or runtime.
 pub(crate) fn format_file(path: &Path, check: bool) -> i32 {
-    if is_legacy_ferry_source(path) {
-        eprintln!(
-            "fer: refusing to format legacy compiler/ferry.fer; migrate to manifest.fon after its schema is defined"
-        );
-        return 1;
-    }
     let source = match fs::read_to_string(path) {
         Ok(source) => source,
         Err(error) => {
@@ -162,10 +156,7 @@ fn discover_source_files(root: &Path) -> io::Result<Vec<PathBuf>> {
                 }
                 continue;
             }
-            if metadata.file_type().is_file()
-                && is_source_file(&path)
-                && !is_legacy_ferry_source(&path)
-            {
+            if metadata.file_type().is_file() && is_source_file(&path) {
                 files.push(path);
             }
         }
@@ -179,16 +170,6 @@ fn is_source_file(path: &Path) -> bool {
         path.extension().and_then(OsStr::to_str),
         Some("fer" | "fon")
     )
-}
-
-/// Identify the repository's pre-FON legacy manifest without interpreting its contents.
-fn is_legacy_ferry_source(path: &Path) -> bool {
-    path.file_name().and_then(OsStr::to_str) == Some("ferry.fer")
-        && path
-            .parent()
-            .and_then(Path::file_name)
-            .and_then(OsStr::to_str)
-            == Some("compiler")
 }
 
 fn is_excluded_directory(path: &Path) -> bool {
@@ -291,20 +272,13 @@ fn cleanup_staged_files(staged_files: &[StagedFile]) {
 mod tests {
     use std::path::Path;
 
-    use super::{is_excluded_directory, is_legacy_ferry_source, is_source_file};
+    use super::{is_excluded_directory, is_source_file};
 
     #[test]
     fn recognizes_supported_source_extensions() {
         assert!(is_source_file(Path::new("main.fer")));
         assert!(is_source_file(Path::new("locale.fon")));
         assert!(!is_source_file(Path::new("README.md")));
-    }
-
-    #[test]
-    fn rejects_only_the_known_legacy_manifest_path() {
-        assert!(is_legacy_ferry_source(Path::new("compiler/ferry.fer")));
-        assert!(!is_legacy_ferry_source(Path::new("src/ferry.fer")));
-        assert!(!is_legacy_ferry_source(Path::new("compiler/manifest.fon")));
     }
 
     #[test]
