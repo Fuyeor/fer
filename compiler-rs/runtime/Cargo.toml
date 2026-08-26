@@ -1,28 +1,15 @@
 # compiler-rs/runtime/Cargo.toml
 
 [package]
-
 name = "runtime"
-
 version.workspace = true
-
 edition.workspace = true
-
 description = "Flat-HIR interpreter runtime for Fer."
 
-
-
 [dependencies]
-
 analysis = { path = "../analysis" }
-
 infra = { workspace = true }
-
 ir = { workspace = true }
-
 syntax = { workspace = true }
-
 vfs = { workspace = true }
-
 regex = "1.11.1"
-
