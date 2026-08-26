@@ -257,6 +257,36 @@ fn run_fmt_workspace(workspace: &TempFerWorkspace, check: bool) -> std::process:
 }
 
 #[test]
+fn fmt_workspace_skips_legacy_ferry_without_mutating_it() {
+    let workspace = TempFerWorkspace::new();
+    let legacy = "name = @fer/compiler\nversion = 0.0.0\nlicense = .mit\n";
+    workspace.write("compiler/ferry.fer", legacy);
+    workspace.write("src/main.fer", "answer=40+2\n");
+
+    let output = run_fmt_workspace(&workspace, false);
+
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    assert!(output.stderr.is_empty(), "stderr: {:?}", output.stderr);
+    assert_eq!(workspace.read("compiler/ferry.fer"), legacy);
+    assert_eq!(workspace.read("src/main.fer"), "answer = 40 + 2\n");
+}
+
+#[test]
+fn fmt_rejects_legacy_ferry_as_a_single_file() {
+    let workspace = TempFerWorkspace::new();
+    let legacy = "name = @fer/compiler\nversion = 0.0.0\nlicense = .mit\n";
+    let path = workspace.write("compiler/ferry.fer", legacy);
+    let output = Command::new(env!("CARGO_BIN_EXE_fer"))
+        .args(["fmt", path.to_str().expect("legacy path must be UTF-8")])
+        .output()
+        .expect("fer binary must start");
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("legacy compiler/ferry.fer"));
+    assert_eq!(workspace.read("compiler/ferry.fer"), legacy);
+}
+
+#[test]
 fn fmt_workspace_rewrites_nested_fer_and_fon_files() {
     let workspace = TempFerWorkspace::new();
     workspace.write("src/main.fer", "main=()->i64{\nanswer=40+2\nanswer\n}\n");
@@ -369,7 +399,7 @@ fn fmt_workspace_stages_all_files_before_replacing_any_file() {
 }
 
 #[test]
-fn fmt_workspace_check_passes_for_repository_sources() {
+fn fmt_workspace_check_reports_repository_source_differences_without_errors() {
     let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new(env!("CARGO_BIN_EXE_fer"))
         .args([
@@ -381,7 +411,19 @@ fn fmt_workspace_check_passes_for_repository_sources() {
         .output()
         .expect("fer binary must start");
 
-    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    assert!(
+        !output.status.success(),
+        "d11 examples are source-preserved fixtures, not canonical fixtures"
+    );
     assert!(output.stdout.is_empty(), "stdout: {:?}", output.stdout);
-    assert!(output.stderr.is_empty(), "stderr: {:?}", output.stderr);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("condition.fer"), "stderr: {stderr}");
+    assert!(
+        !stderr.contains("ferry.fer"),
+        "legacy ferry must be excluded: {stderr}"
+    );
+    assert!(
+        !stderr.contains("cannot "),
+        "workspace check must not fail validation: {stderr}"
+    );
 }

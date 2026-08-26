@@ -29,6 +29,57 @@ fn preserves_crlf_and_comment_separated_gaps() {
 }
 
 #[test]
+fn preserves_native_atoms_and_mixed_separators() {
+    let source = "package={name=@fer/std,version=0.1.0\nlicense=.mit,path=./docs/index.md,enabled=true,constraint=^0.1.0}\n";
+    let formatted = format_source(source).expect("native FON atoms must format");
+
+    assert!(
+        formatted.contains("name = @fer/std"),
+        "formatted: {formatted}"
+    );
+    assert!(
+        formatted.contains("version = 0.1.0"),
+        "formatted: {formatted}"
+    );
+    assert!(
+        formatted.contains("license = .mit"),
+        "formatted: {formatted}"
+    );
+    assert!(
+        formatted.contains("path = ./docs/index.md"),
+        "formatted: {formatted}"
+    );
+    assert!(
+        formatted.contains("enabled = true"),
+        "formatted: {formatted}"
+    );
+    assert!(
+        formatted.contains("constraint = ^0.1.0"),
+        "formatted: {formatted}"
+    );
+    assert!(
+        !formatted.contains("`@fer/std`"),
+        "native package path became a string"
+    );
+    assert!(
+        !formatted.contains("`.mit`"),
+        "native enum atom became a string"
+    );
+    assert!(
+        !formatted.contains("`0.1.0`"),
+        "native version became a string"
+    );
+    assert!(
+        !formatted.contains("`./docs/index.md`"),
+        "native relative path became a string"
+    );
+    assert_eq!(
+        format_source(&formatted).expect("native FON output must be idempotent"),
+        formatted
+    );
+}
+
+#[test]
 fn rejects_invalid_fon_without_returning_a_rewrite() {
     assert!(matches!(
         format_source("config={\nvalue=\n"),

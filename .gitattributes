@@ -3,3 +3,6 @@
 
 *.fer linguist-detectable=true
 *.fu  linguist-detectable=true
+
+# Normative d11 examples intentionally retain upstream trailing whitespace.
+examples/condition.fer whitespace=-trailing-space
