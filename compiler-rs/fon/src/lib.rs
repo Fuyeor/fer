@@ -4,8 +4,10 @@ use fon_parser::{Diagnostic as FonDiagnostic, ParseResult};
 use infra::{Diagnostic, DiagnosticBag, DiagnosticValue, MessageId, Severity, Span};
 use vfs::{FileId, SourceMap};
 
+mod formatter;
 pub mod query;
 
+pub use formatter::{FormatError, format_source};
 pub use query::{FON_PARSE_QUERY, FON_SOURCE_QUERY, register_queries, set_source_file};
 
 /// A parsed FON source together with the Fer file identity that owns it.
