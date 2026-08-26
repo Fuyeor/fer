@@ -1,6 +1,7 @@
 // compiler-rs/runtime/src/ops.rs
 
 use ir::hir::{BinaryOp, ConditionOp};
+use regex::RegexBuilder;
 
 use crate::error::RuntimeError;
 use crate::value::{Value, ValueKind};
@@ -55,11 +56,87 @@ pub(super) fn evaluate_condition(
         ConditionOp::More | ConditionOp::Gt => compare_numeric(left, right, span, |a, b| a > b),
         ConditionOp::Least | ConditionOp::LtEq => compare_numeric(left, right, span, |a, b| a <= b),
         ConditionOp::Most | ConditionOp::GtEq => compare_numeric(left, right, span, |a, b| a >= b),
-        ConditionOp::Matches | ConditionOp::In => Err(RuntimeError::Unsupported {
+        ConditionOp::Matches => evaluate_regex_match(left, right, span),
+        ConditionOp::In => Err(RuntimeError::Unsupported {
             span,
-            feature: "match predicate",
+            feature: "collection membership predicate",
         }),
     }
+}
+
+/// Match a string against Fer's `/pattern/flags` regex literal representation.
+fn evaluate_regex_match(
+    left: &Value,
+    right: &Value,
+    span: infra::Span,
+) -> Result<bool, RuntimeError> {
+    let Value::String(text) = left else {
+        return Err(RuntimeError::TypeMismatch {
+            span,
+            expected: ValueKind::String,
+            found: left.kind(),
+        });
+    };
+    let Value::Regex(literal) = right else {
+        return Err(RuntimeError::TypeMismatch {
+            span,
+            expected: ValueKind::Regex,
+            found: right.kind(),
+        });
+    };
+    let Some((pattern, flags)) = split_regex_literal(literal) else {
+        return Err(RuntimeError::Unsupported {
+            span,
+            feature: "malformed regular expression literal",
+        });
+    };
+    let mut builder = RegexBuilder::new(pattern);
+    for flag in flags.chars() {
+        match flag {
+            'i' => {
+                builder.case_insensitive(true);
+            }
+            'm' => {
+                builder.multi_line(true);
+            }
+            's' => {
+                builder.dot_matches_new_line(true);
+            }
+            'U' => {
+                builder.swap_greed(true);
+            }
+            'x' => {
+                builder.ignore_whitespace(true);
+            }
+            _ => {
+                return Err(RuntimeError::Unsupported {
+                    span,
+                    feature: "regular expression flag",
+                });
+            }
+        }
+    }
+    let regex = builder.build().map_err(|_| RuntimeError::Unsupported {
+        span,
+        feature: "invalid regular expression",
+    })?;
+    Ok(regex.is_match(text))
+}
+
+/// Split a raw regex literal at its first unescaped closing slash.
+fn split_regex_literal(literal: &str) -> Option<(&str, &str)> {
+    let body = literal.strip_prefix('/')?;
+    let mut escaped = false;
+    for (index, character) in body.char_indices() {
+        if escaped {
+            escaped = false;
+        } else if character == '\\' {
+            escaped = true;
+        } else if character == '/' {
+            return Some((&body[..index], &body[index + character.len_utf8()..]));
+        }
+    }
+    None
 }
 
 fn compare_numeric(

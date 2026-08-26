@@ -2,12 +2,36 @@
 
 use infra::{Diagnostic, DiagnosticValue, MessageId, Span};
 use ir::hir::{
-    BinaryOp, ConditionKind, ExprKind, HirId, InterpolatedPart, ItemKind, Literal, Stmt, UnaryOp,
+    BinaryOp, ConditionKind, ConditionOp, ExprKind, HirId, InterpolatedPart, ItemKind, Literal,
+    Stmt, UnaryOp,
 };
 
 use super::TypeId;
 use super::check::{Checker, ItemState};
 use super::model::{FunctionType, TypeKind};
+
+fn condition_op(op: BinaryOp) -> Option<ConditionOp> {
+    if !super::support::is_comparison(op) {
+        return None;
+    }
+    Some(match op {
+        BinaryOp::Contains => ConditionOp::Contains,
+        BinaryOp::Matches => ConditionOp::Matches,
+        BinaryOp::Starts => ConditionOp::Starts,
+        BinaryOp::Ends => ConditionOp::Ends,
+        BinaryOp::Less => ConditionOp::Less,
+        BinaryOp::More => ConditionOp::More,
+        BinaryOp::Least => ConditionOp::Least,
+        BinaryOp::Most => ConditionOp::Most,
+        BinaryOp::Equals => ConditionOp::Equals,
+        BinaryOp::In => ConditionOp::In,
+        BinaryOp::Lt => ConditionOp::Lt,
+        BinaryOp::Gt => ConditionOp::Gt,
+        BinaryOp::LtEq => ConditionOp::LtEq,
+        BinaryOp::GtEq => ConditionOp::GtEq,
+        _ => return None,
+    })
+}
 
 impl<'a> Checker<'a> {
     pub(super) fn infer_item(&mut self, item_id: HirId) -> TypeId {
@@ -192,18 +216,18 @@ impl<'a> Checker<'a> {
         span: Span,
     ) -> TypeId {
         let lhs_type = self.infer_expr(lhs, None);
-        let rhs_type = self.infer_expr(
-            rhs,
-            if self.is_numeric(lhs_type) {
-                Some(lhs_type)
-            } else {
-                None
-            },
-        );
-        let result = if super::support::is_comparison(op) {
-            self.unify(lhs_type, rhs_type, span);
+        let result = if let Some(condition_op) = condition_op(op) {
+            self.infer_predicate(condition_op, lhs_type, rhs, span);
             self.store.bool()
         } else if super::support::is_arithmetic(op) {
+            let rhs_type = self.infer_expr(
+                rhs,
+                if self.is_numeric(lhs_type) {
+                    Some(lhs_type)
+                } else {
+                    None
+                },
+            );
             if !self.is_numeric(lhs_type) {
                 let integer_type = self.store.integer(true, 64);
                 self.report_type_mismatch(integer_type, lhs_type, span)
@@ -286,9 +310,8 @@ impl<'a> Checker<'a> {
                         let value_type = self.infer_expr(value, Some(scrutinee));
                         self.unify(value_type, scrutinee, condition.span);
                     }
-                    ConditionKind::Predicate { rhs, .. } => {
-                        let value_type = self.infer_expr(rhs, Some(scrutinee));
-                        self.unify(value_type, scrutinee, condition.span);
+                    ConditionKind::Predicate { op, rhs } => {
+                        self.infer_predicate(op, scrutinee, rhs, condition.span);
                     }
                 }
             }
@@ -300,6 +323,64 @@ impl<'a> Checker<'a> {
         }
         let result = result.unwrap_or_else(|| self.store.unit());
         expected.map_or(result, |expected| self.unify(result, expected, span))
+    }
+
+    /// Infer predicate operands according to the runtime value domain of each operator.
+    fn infer_predicate(
+        &mut self,
+        op: ConditionOp,
+        scrutinee: TypeId,
+        rhs: ir::hir::ExprId,
+        span: Span,
+    ) {
+        match op {
+            ConditionOp::Contains | ConditionOp::Starts | ConditionOp::Ends => {
+                let string_type = self.store.intern(TypeKind::String);
+                self.require_operand_type(scrutinee, string_type, span);
+                let rhs_type = self.infer_expr(rhs, Some(string_type));
+                self.unify(rhs_type, string_type, self.expr_span(rhs));
+            }
+            ConditionOp::Matches => {
+                let string_type = self.store.intern(TypeKind::String);
+                let regex_type = self.store.intern(TypeKind::Regex);
+                self.require_operand_type(scrutinee, string_type, span);
+                let rhs_type = self.infer_expr(rhs, Some(regex_type));
+                self.unify(rhs_type, regex_type, self.expr_span(rhs));
+            }
+            ConditionOp::Less
+            | ConditionOp::More
+            | ConditionOp::Least
+            | ConditionOp::Most
+            | ConditionOp::Lt
+            | ConditionOp::Gt
+            | ConditionOp::LtEq
+            | ConditionOp::GtEq => {
+                if !self.is_numeric(scrutinee)
+                    && !self.is_unknown(scrutinee)
+                    && !self.is_error(scrutinee)
+                {
+                    let integer_type = self.store.integer(true, 64);
+                    self.report_type_mismatch(integer_type, scrutinee, span);
+                }
+                let rhs_type = self.infer_expr(rhs, Some(scrutinee));
+                self.unify(rhs_type, scrutinee, self.expr_span(rhs));
+            }
+            ConditionOp::Equals => {
+                let rhs_type = self.infer_expr(rhs, Some(scrutinee));
+                self.unify(rhs_type, scrutinee, self.expr_span(rhs));
+            }
+            // `in` requires collection types, which are not represented in the first type model.
+            ConditionOp::In => {
+                self.infer_expr(rhs, None);
+            }
+        }
+    }
+
+    /// Report an operand mismatch while allowing unresolved types to flow forward.
+    fn require_operand_type(&mut self, actual: TypeId, expected: TypeId, span: Span) {
+        if !self.is_error(actual) && !self.is_unknown(actual) && actual != expected {
+            self.report_type_mismatch(expected, actual, span);
+        }
     }
 
     pub(super) fn infer_body(

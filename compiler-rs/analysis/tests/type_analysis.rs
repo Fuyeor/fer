@@ -292,3 +292,36 @@ fn interpolated_strings_infer_as_string() {
     });
     assert!(table.diagnostics.is_empty());
 }
+
+#[test]
+fn match_predicate_accepts_a_regex_rhs_for_string_scrutinees() {
+    let (_, _, table) = analyze(
+        "check = (value: string) -> string { value { matches /fer/i { `yes` } { `no` } } }",
+    );
+
+    assert!(table.diagnostics.is_empty());
+}
+
+#[test]
+fn match_predicate_rejects_a_non_regex_rhs() {
+    let (_, _, table) =
+        analyze("check = (value: string) -> string { value { matches `fer` { `yes` } { `no` } } }");
+
+    assert!(
+        table
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "type-mismatch")
+    );
+}
+
+#[test]
+fn binary_match_predicate_returns_a_boolean() {
+    let (_, hir, table) = analyze("is_match = (value: string) -> bool { value matches /fer/i }");
+    let item = function_id(&hir, 0);
+
+    assert_expr_kind(&table, tail_expr(&hir, item), |kind| {
+        matches!(kind, TypeKind::Bool)
+    });
+    assert!(table.diagnostics.is_empty());
+}
