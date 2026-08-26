@@ -19,8 +19,19 @@ pub enum DriverError {
     Runtime(RuntimeError),
 }
 
-/// Run one source string through parsing, lowering, analysis, and runtime.
-pub fn run_source(path: &str, source_text: &str) -> Result<ExecutionReport, DriverError> {
+/// Read-only compiler results for one source snapshot.
+#[derive(Debug, Clone)]
+pub struct AnalysisSnapshot {
+    pub file_id: FileId,
+    pub source: Arc<str>,
+    pub hir: ir::HirFile,
+    pub resolution: analysis::ResolutionTable,
+    pub types: analysis::TypeTable,
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+/// Analyze one source string without executing user code.
+pub fn analyze_source(path: &str, source_text: &str) -> Result<AnalysisSnapshot, DriverError> {
     let mut source_map = vfs::SourceMap::new();
     let file_id = source_map
         .add_file(path, source_text.to_owned())
@@ -34,20 +45,38 @@ pub fn run_source(path: &str, source_text: &str) -> Result<ExecutionReport, Driv
     analysis::set_cst_file(&database, cst);
 
     let hir: ir::HirFile = database.query(ir::LOWER_HIR_QUERY);
+    let mut diagnostics = hir.diagnostics.clone();
     if has_errors(&hir.diagnostics) {
-        return Err(DriverError::Diagnostics(hir.diagnostics));
-    }
-    let resolution: analysis::ResolutionTable = database.query(analysis::RESOLVE_NAMES_QUERY);
-    if has_errors(&resolution.diagnostics) {
-        return Err(DriverError::Diagnostics(resolution.diagnostics));
-    }
-    let types: analysis::TypeTable = database.query(analysis::TYPE_ANALYSIS_QUERY);
-    if has_errors(&types.diagnostics) {
-        return Err(DriverError::Diagnostics(types.diagnostics));
+        return Err(DriverError::Diagnostics(diagnostics));
     }
 
-    let mut interpreter = runtime::Interpreter::new(&hir, &resolution);
-    match find_main_function(&hir, source.as_ref()) {
+    let resolution: analysis::ResolutionTable = database.query(analysis::RESOLVE_NAMES_QUERY);
+    diagnostics.extend(resolution.diagnostics.clone());
+    if has_errors(&resolution.diagnostics) {
+        return Err(DriverError::Diagnostics(diagnostics));
+    }
+
+    let types: analysis::TypeTable = database.query(analysis::TYPE_ANALYSIS_QUERY);
+    diagnostics.extend(types.diagnostics.clone());
+    if has_errors(&types.diagnostics) {
+        return Err(DriverError::Diagnostics(diagnostics));
+    }
+
+    Ok(AnalysisSnapshot {
+        file_id,
+        source,
+        hir,
+        resolution,
+        types,
+        diagnostics,
+    })
+}
+
+/// Run one source string through parsing, lowering, analysis, and runtime.
+pub fn run_source(path: &str, source_text: &str) -> Result<ExecutionReport, DriverError> {
+    let snapshot = analyze_source(path, source_text)?;
+    let mut interpreter = runtime::Interpreter::new(&snapshot.hir, &snapshot.resolution);
+    match find_main_function(&snapshot.hir, snapshot.source.as_ref()) {
         Some(item_id) => {
             interpreter
                 .run_function(item_id, Vec::new())
