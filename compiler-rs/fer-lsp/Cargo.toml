@@ -10,6 +10,7 @@ description = "Language Server Protocol implementation for Fer."
 diagnostics = { workspace = true }
 fer = { workspace = true }
 infra = { workspace = true }
+syntax = { workspace = true }
 vfs = { workspace = true }
 tokio = { workspace = true }
 tower-lsp-server = { workspace = true }

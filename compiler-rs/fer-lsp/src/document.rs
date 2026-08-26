@@ -73,6 +73,15 @@ impl DocumentStore {
         }))
     }
 
+    /// Return the current immutable snapshot for an open document.
+    pub fn snapshot(&self, uri: &Uri) -> Option<DocumentSnapshot> {
+        self.documents.get(uri).map(|document| DocumentSnapshot {
+            uri: uri.clone(),
+            version: document.version,
+            source: document.source.clone(),
+        })
+    }
+
     /// Remove a document and report whether a stored snapshot was cleared.
     pub fn close(&mut self, uri: &Uri) -> bool {
         self.documents.remove(uri).is_some()

@@ -120,6 +120,7 @@ dependencies = [
  "fer",
  "infra",
  "serde_json",
+ "syntax",
  "tokio",
  "tower-lsp-server",
  "vfs",

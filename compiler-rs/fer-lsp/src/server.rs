@@ -4,13 +4,18 @@ use std::sync::Mutex;
 
 use tower_lsp_server::ls_types::{
     Diagnostic, DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    InitializeParams, InitializeResult, InitializedParams, MessageType, PositionEncodingKind,
-    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind,
+    DocumentFormattingParams, InitializeParams, InitializeResult, InitializedParams, MessageType,
+    OneOf, PositionEncodingKind, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextEdit,
 };
-use tower_lsp_server::{Client, LanguageServer, jsonrpc::Result};
+use tower_lsp_server::{
+    Client, LanguageServer,
+    jsonrpc::{Error, Result},
+};
 
 use crate::diagnostics::to_lsp_diagnostics;
 use crate::document::{DocumentError, DocumentSnapshot, DocumentStore};
+use crate::formatting::format_document;
 use crate::position::LineIndex;
 
 #[derive(Debug)]
@@ -65,6 +70,7 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+                document_formatting_provider: Some(OneOf::Left(true)),
                 ..ServerCapabilities::default()
             },
             server_info: Some(ServerInfo {
@@ -79,6 +85,19 @@ impl LanguageServer for Backend {
 
     async fn shutdown(&self) -> Result<()> {
         Ok(())
+    }
+
+    async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
+        let snapshot = self
+            .documents
+            .lock()
+            .expect("document store mutex must not be poisoned")
+            .snapshot(&params.text_document.uri);
+        let Some(snapshot) = snapshot else {
+            return Ok(None);
+        };
+        format_document(snapshot.source.as_ref(), &params.options)
+            .map_err(|error| Error::invalid_params(format!("cannot format document: {error:?}")))
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {

@@ -1,11 +1,12 @@
-The `syntax` crate provides the lexer and parser for the Fer programming language. It transforms source text into a source-mapped Concrete Syntax Tree (CST) whose nodes retain exact source spans and are suitable for formatting, migration, and IDE tooling.
+The `syntax` crate provides the lexer and parser for the Fer programming language. It transforms source text into a source-mapped Concrete Syntax Tree (CST), and exposes a separate lossless token stream plus conservative formatter for source-preserving IDE edits.
 
 ## Design
 
 - **Zero magic** – no parser generators, no macros.  Every token and tree
   node is explicit.
-- **Source-mapped CST** – trivia is skipped by the lexer while the tree
-  records the exact source range of every parsed construct.
+- **Source-mapped CST** – the semantic parser records exact source ranges for
+  parsed constructs, while `LosslessTokenStream` retains every source gap,
+  comment, and original token spelling for source-preserving tools.
 - **Indexed storage** – tree nodes are stored in a flat `Vec`, referenced by
   `NodeId(u32)`.  No recursive pointers, easy to serialize, cache-friendly.
 - **Pratt parsing** – expressions are parsed with operator precedence and
@@ -21,6 +22,8 @@ The `syntax` crate provides the lexer and parser for the Fer programming languag
 syntax/
   grammar.rs   – TokenKind enum, keyword table, precedence table
   lex.rs       – Lexer (backtick strings, comments, regex mode, interned identifiers)
+  lossless.rs  – Source-owned token stream with exact trivia spans
+  formatter.rs – Conservative lossless indentation formatter
   cst.rs       – CST node kinds and helper types (ChainExpr, NamedArg, etc.)
   parse/
     mod.rs     – Parser context, token stream, backtracking
@@ -57,6 +60,8 @@ syntax/
 - Match expressions are parsed into `MatchExpr` and `MatchArm` nodes, but
   semantic validation is deferred to later compiler layers.
 - The path comment (`/// @/...`) is not extracted and stored in CST.
+- Existing CST nodes still omit some concrete delimiters; the first formatter
+  therefore changes only line indentation and preserves all other source bytes.
 - Import/export annotations are rejected explicitly; annotations currently
   target declarations and struct fields.
 - Error recovery is basic; synchronization token sets may be incomplete.
@@ -81,5 +86,7 @@ Run with `cargo test -p syntax`.
 
 - Integrate with the `query` incremental database: register `parse_file`
   as a cached query.
-- Implement the `migrate` and `fmt` transforms on top of the source-mapped CST.
+- Associate lossless tokens with CST nodes so future formatter passes can
+  safely normalize separators, delimiters, and canonical spacing.
+- Implement the `migrate` transforms on top of the source-mapped CST.
 - Complete pattern parsing for match arms.
