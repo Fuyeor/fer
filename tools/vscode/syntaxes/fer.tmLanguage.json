@@ -65,7 +65,7 @@
       "patterns": [
         {
           "name": "keyword.control.fer",
-          "match": "\\b(struct|enum|exports)\\b"
+          "match": "\\b(struct|enum|exports|all|any|one|none)\\b"
         }
       ]
     },
@@ -73,7 +73,7 @@
       "patterns": [
         {
           "name": "keyword.operator.logical.fer",
-          "match": "\\b(and|or|not|in|contains|matches|starts|ends|less|more|least|most|equals)\\b"
+          "match": "\\b(not|in|contains|matches|starts|ends|less|more|least|most|equals)\\b"
         },
         {
           "name": "keyword.operator.comparison.fer",
@@ -88,7 +88,7 @@
     "functions": {
       "patterns": [
         {
-          "match": "\\b([a-z0-9-]+)\\s*(?=\\()",
+          "match": "\\b([a-z][a-z0-9-]*)\\s*(?=\\=\\s*\\()",
           "name": "entity.name.function.fer"
         }
       ]
