@@ -31,24 +31,16 @@ impl<'a> Parser<'a> {
             let name = self.parse_identifier()?;
 
             match self.current_kind() {
-                TokenKind::LParen | TokenKind::Colon => {
-                    // Try a function definition; unannotated forms may fall back to expressions
-                    match self.parse_function_def_after_name(name, name_span, annotations.clone()) {
-                        Ok(node) => return Ok(node),
-                        Err(_) => {
-                            self.restore(ck);
-                            if !annotations.is_empty() {
-                                return Err(
-                                    self.error("expected a function declaration after annotation")
-                                );
-                            }
-                            // fall through to expression parsing below
-                        }
-                    }
-                }
                 TokenKind::Eq => {
                     self.advance(); // consume '='
                     match self.current_kind() {
+                        TokenKind::LParen if self.starts_function_definition() => {
+                            return self.parse_function_def_after_name(
+                                name,
+                                name_span,
+                                annotations,
+                            );
+                        }
                         TokenKind::Struct => {
                             self.advance();
                             return self.parse_struct_def_after_name(name, name_span, annotations);
@@ -250,36 +242,33 @@ impl<'a> Parser<'a> {
         name_span: Span,
         annotations: Vec<NodeId>,
     ) -> Result<NodeId, ParseError> {
-        // Parse parameter list
+        // Parse the required parameter list after the function binding operator.
+        self.expect(TokenKind::LParen)?;
         let mut params = Vec::new();
-        if self.current_kind() == TokenKind::LParen {
-            self.advance();
-            while self.current_kind() != TokenKind::RParen && self.current_kind() != TokenKind::Eof
-            {
-                let param_name_span = self.current_span();
-                let param_name = self.parse_identifier()?;
-                self.expect(TokenKind::Colon)?;
-                let param_type = self.parse_type()?;
-                let param_span = Span::new(param_name_span.start, self.node_span(param_type).end);
-                let param_node = self.push_node(
-                    NodeKind::Param {
-                        name: param_name_span,
-                        type_annotation: param_type,
-                    },
-                    param_span,
-                    vec![param_name, param_type],
-                );
-                params.push(param_node);
-                if self.current_kind() == TokenKind::Comma {
-                    self.advance();
-                } else {
-                    break;
-                }
+        while self.current_kind() != TokenKind::RParen && self.current_kind() != TokenKind::Eof {
+            let param_name_span = self.current_span();
+            let param_name = self.parse_identifier()?;
+            self.expect(TokenKind::Colon)?;
+            let param_type = self.parse_type()?;
+            let param_span = Span::new(param_name_span.start, self.node_span(param_type).end);
+            let param_node = self.push_node(
+                NodeKind::Param {
+                    name: param_name_span,
+                    type_annotation: param_type,
+                },
+                param_span,
+                vec![param_name, param_type],
+            );
+            params.push(param_node);
+            if self.current_kind() == TokenKind::Comma {
+                self.advance();
+            } else {
+                break;
             }
-            self.expect(TokenKind::RParen)?;
         }
+        self.expect(TokenKind::RParen)?;
 
-        // Return type (optional)
+        // Parse the optional return type for compatibility with inferred internal functions.
         let return_type = if self.current_kind() == TokenKind::Arrow {
             self.advance();
             Some(self.parse_type()?)
@@ -314,6 +303,24 @@ impl<'a> Parser<'a> {
             span,
             children,
         ))
+    }
+
+    fn starts_function_definition(&mut self) -> bool {
+        let checkpoint = self.checkpoint();
+        let starts = if self.current_kind() != TokenKind::LParen {
+            false
+        } else {
+            self.advance();
+            if self.current_kind() == TokenKind::RParen {
+                self.advance();
+                matches!(self.current_kind(), TokenKind::Arrow | TokenKind::LBrace)
+            } else {
+                self.current_kind() == TokenKind::Identifier
+                    && self.peek_kind() == Some(TokenKind::Colon)
+            }
+        };
+        self.restore(checkpoint);
+        starts
     }
 
     fn declaration_start(&self, annotations: &[NodeId], fallback: usize) -> usize {

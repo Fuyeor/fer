@@ -27,7 +27,8 @@ fn resolves_top_level_forward_reference() {
 
 #[test]
 fn resolves_function_parameters_and_block_constants() {
-    let (source, hir) = lower_source("add(value: i32) { doubled = value + value doubled }");
+    let (source, hir) =
+        lower_source("add = (value: i32) -> i32 { doubled = value + value doubled }");
     let table = resolve(&hir, &source);
     assert!(table.diagnostics.is_empty());
 
@@ -63,7 +64,7 @@ fn resolves_function_parameters_and_block_constants() {
 
 #[test]
 fn rhs_is_resolved_before_first_local_binding() {
-    let (source, hir) = lower_source("compute() { value = value + 1 }");
+    let (source, hir) = lower_source("compute = () -> i32 { value = value + 1 }");
     let table = resolve(&hir, &source);
     assert_eq!(table.diagnostics.len(), 1);
     assert_eq!(table.diagnostics[0].code, "undefined-name");
@@ -92,7 +93,8 @@ fn duplicate_definitions_are_first_wins() {
 
 #[test]
 fn match_arm_scopes_allow_shadowing_without_duplicate_diagnostic() {
-    let source_text = "outer = 1\nrun() { result = outer { `A` { outer = 2 outer } { outer } } }";
+    let source_text =
+        "outer = 1\nrun = () -> void { result = outer { `A` { outer = 2 outer } { outer } } }";
     let (source, hir) = lower_source(source_text);
     let table = resolve(&hir, &source);
     assert!(table.diagnostics.is_empty());

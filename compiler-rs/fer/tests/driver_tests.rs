@@ -5,7 +5,8 @@ use runtime::Value;
 
 #[test]
 fn runs_a_source_file_through_the_compiler_pipeline() {
-    let report = run_source("main.fer", "main() -> i64 { 40 + 2 }").expect("valid source must run");
+    let report =
+        run_source("main.fer", "main = () -> i64 { 40 + 2 }").expect("valid source must run");
     assert_eq!(report.result, Value::Integer(42));
 }
 

@@ -72,7 +72,7 @@ fn unconstrained_literals_use_confirmed_default_types() {
 #[test]
 fn builtin_aliases_and_system_types_have_stable_kinds() {
     let (_, hir, table) = analyze(
-        "byte_value(value: byte) -> u8 { value }\nchar_value(value: char) -> char { value }\nempty() -> void { }",
+        "byte_value = (value: byte) -> u8 { value }\nchar_value = (value: char) -> char { value }\nempty = () -> void { }",
     );
 
     let byte_signature = table
@@ -107,7 +107,7 @@ fn builtin_aliases_and_system_types_have_stable_kinds() {
 
 #[test]
 fn explicit_parameter_type_flows_to_omitted_function_return() {
-    let (_, hir, table) = analyze("identity(value: i32) { value }");
+    let (_, hir, table) = analyze("identity = (value: i32) { value }");
     let item = function_id(&hir, 0);
     let tail = tail_expr(&hir, item);
 
@@ -134,7 +134,7 @@ fn explicit_parameter_type_flows_to_omitted_function_return() {
 
 #[test]
 fn explicit_return_type_rejects_a_different_tail_type() {
-    let (_, hir, table) = analyze("identity(value: i32) -> string { value }");
+    let (_, hir, table) = analyze("identity = (value: i32) -> string { value }");
     let item = function_id(&hir, 0);
     assert!(
         table
@@ -149,7 +149,7 @@ fn explicit_return_type_rejects_a_different_tail_type() {
 
 #[test]
 fn local_binding_type_is_published_for_later_references() {
-    let (_, hir, table) = analyze("compute() { value = 1 value }");
+    let (_, hir, table) = analyze("compute = () { value = 1 value }");
     let item = function_id(&hir, 0);
 
     assert_expr_kind(&table, tail_expr(&hir, item), |kind| {
@@ -166,7 +166,7 @@ fn local_binding_type_is_published_for_later_references() {
         table.type_of(tail_expr(&hir, item))
     );
     assert_eq!(
-        name_expr_ids(&hir, "compute() { value = 1 value }", "value").len(),
+        name_expr_ids(&hir, "compute = () { value = 1 value }", "value").len(),
         2
     );
     assert!(table.diagnostics.is_empty());
@@ -174,7 +174,7 @@ fn local_binding_type_is_published_for_later_references() {
 
 #[test]
 fn collected_function_signature_supports_forward_calls() {
-    let (_, hir, table) = analyze("use() { answer() }\nanswer() -> i32 { 1 }");
+    let (_, hir, table) = analyze("use = () { answer() }\nanswer = () -> i32 { 1 }");
     let use_item = function_id(&hir, 0);
 
     assert_expr_kind(&table, tail_expr(&hir, use_item), |kind| {
@@ -191,7 +191,7 @@ fn collected_function_signature_supports_forward_calls() {
 
 #[test]
 fn call_with_wrong_argument_count_has_a_specific_diagnostic() {
-    let (_, _, table) = analyze("answer(value: i32) -> i32 { value }\nuse() { answer() }");
+    let (_, _, table) = analyze("answer = (value: i32) -> i32 { value }\nuse = () { answer() }");
     assert!(
         table
             .diagnostics
@@ -202,7 +202,7 @@ fn call_with_wrong_argument_count_has_a_specific_diagnostic() {
 
 #[test]
 fn quantifier_conditions_must_be_boolean_and_return_boolean() {
-    let (_, hir, table) = analyze("check(value: bool) -> bool { all (value, any (value)) }");
+    let (_, hir, table) = analyze("check = (value: bool) -> bool { all (value, any (value)) }");
     let item = function_id(&hir, 0);
 
     assert_expr_kind(&table, tail_expr(&hir, item), |kind| {
@@ -214,7 +214,7 @@ fn quantifier_conditions_must_be_boolean_and_return_boolean() {
 #[test]
 fn match_arm_results_are_checked_and_unified() {
     let (_, hir, table) =
-        analyze("choose(value: bool) -> bool { value { true { true } false { false } } }");
+        analyze("choose = (value: bool) -> bool { value { true { true } false { false } } }");
     let item = function_id(&hir, 0);
 
     assert_expr_kind(&table, tail_expr(&hir, item), |kind| {
@@ -225,7 +225,7 @@ fn match_arm_results_are_checked_and_unified() {
 
 #[test]
 fn non_boolean_quantifier_condition_has_a_specific_diagnostic() {
-    let (_, _, table) = analyze("check(value: i32) -> bool { all (value) }");
+    let (_, _, table) = analyze("check = (value: i32) -> bool { all (value) }");
     assert!(
         table
             .diagnostics
@@ -236,7 +236,7 @@ fn non_boolean_quantifier_condition_has_a_specific_diagnostic() {
 
 #[test]
 fn arithmetic_rejects_incompatible_operand_types() {
-    let (_, _, table) = analyze("compute() { 1 + `text` }");
+    let (_, _, table) = analyze("compute = () { 1 + `text` }");
     assert!(
         table
             .diagnostics
@@ -247,7 +247,7 @@ fn arithmetic_rejects_incompatible_operand_types() {
 
 #[test]
 fn unknown_type_reference_is_reported_as_an_analysis_diagnostic() {
-    let (_, _, table) = analyze("identity(value: Missing) { value }");
+    let (_, _, table) = analyze("identity = (value: Missing) { value }");
     assert!(
         table
             .diagnostics
