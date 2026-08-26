@@ -1,0 +1,8 @@
+# tools/vscode/.vscodeignore
+
+.vscode/**
+node_modules/**
+out/**/*.map
+test/**
+*.ts
+npm-debug.log*

@@ -1,0 +1,18 @@
+# compiler-rs/fer-lsp/Cargo.toml
+
+[package]
+name = "fer-lsp"
+version.workspace = true
+edition.workspace = true
+description = "Language Server Protocol implementation for Fer."
+
+[dependencies]
+diagnostics = { workspace = true }
+fer = { workspace = true }
+infra = { workspace = true }
+vfs = { workspace = true }
+tokio = { workspace = true }
+tower-lsp-server = { workspace = true }
+
+[dev-dependencies]
+serde_json = "1"

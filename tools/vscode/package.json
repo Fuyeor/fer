@@ -12,9 +12,17 @@
   "engines": {
     "vscode": "^1.75.0"
   },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:fer"
+  ],
+  "scripts": {
+    "compile": "tsc -p ./",
+    "test": "node ./test/grammar.test.mjs",
+    "vscode:prepublish": "npm run compile"
+  },
   "categories": [
-    "Programming Languages",
-    "Formatters"
+    "Programming Languages"
   ],
   "contributes": {
     "languages": [
@@ -42,6 +50,24 @@
         "path": "./themes/fer-lavender.dark.json"
       }
     ],
+    "configuration": {
+      "title": "Fer",
+      "properties": {
+        "fer.server.path": {
+          "type": "string",
+          "default": "fer-lsp",
+          "description": "Command or absolute path used to start the Fer language server."
+        },
+        "fer.server.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional command-line arguments passed to fer-lsp."
+        }
+      }
+    },
     "configurationDefaults": {
       "[fer]": {
         "editor.bracketPairColorization.enabled": false,
@@ -148,5 +174,13 @@
         ]
       }
     }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.9.2"
   }
 }
