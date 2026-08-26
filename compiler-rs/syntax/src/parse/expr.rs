@@ -214,6 +214,7 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(self.push_node(NodeKind::LitString, token.span, vec![]))
             }
+            TokenKind::StringStart => self.parse_interpolated_string(),
             TokenKind::TrueKw | TokenKind::FalseKw => {
                 let value = token.kind == TokenKind::TrueKw;
                 self.advance();

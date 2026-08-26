@@ -31,12 +31,12 @@ syntax/
     pattern.rs – pattern parser (match arms, destructuring) [not yet implemented]
 ```
 
-## Compliance with Fer draft v0.0.11
+## Compliance with Fer draft v0.0.21
 
 - Identifiers use kebab-case; struct/enum names must be Pascal-kebab-case
   (enforced by semantic analysis).
-- Functions are defined without a `function` keyword:
-  `my-func(x: i32, y: i32) -> i32 { x + y }`.
+- Functions are defined without a `function` keyword and bind through `=`:
+  `my-func = (x: i32, y: i32) -> i32 { x + y }`.
 - Structs and enums are assigned with `=`. Struct fields support inferred
   defaults (``name = `guest``), explicit typed defaults
   (`age: i32 = 18`), and required fields (`id: i32`).
@@ -44,7 +44,7 @@ syntax/
   arguments may be positional or named, for example
   ``#[derive = `Debug`, mode = stable]``.
 - Imports use `{ names } = @scope/pkg`; exports use `exports { names }`.
-- String literals use backticks and support multi-line with auto-dedent.
+- String literals use backticks, support interpolation such as `` `Hello {name}` ``, and support multi-line auto-dedent with physical-line continuation.
 - No `==`, `!=`, `&&`, `||`, `!` – conditions use comparison keywords such as
   `equals`, `contains`, and `matches`, while logical combinations use quantifiers:
   `all (...)`, `any (...)`, `one (...)`, or `none (...)`.
@@ -54,8 +54,6 @@ syntax/
 
 ## Current limitations
 
-- String interpolation (`` `Hello {name}` ``) is not yet implemented;
-  currently only simple strings are parsed.
 - Match expressions are parsed into `MatchExpr` and `MatchArm` nodes, but
   semantic validation is deferred to later compiler layers.
 - The path comment (`/// @/...`) is not extracted and stored in CST.
@@ -84,5 +82,4 @@ Run with `cargo test -p syntax`.
 - Integrate with the `query` incremental database: register `parse_file`
   as a cached query.
 - Implement the `migrate` and `fmt` transforms on top of the source-mapped CST.
-- Enhance the lexer/parser to support full string interpolation.
 - Complete pattern parsing for match arms.

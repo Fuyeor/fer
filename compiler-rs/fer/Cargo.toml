@@ -1,0 +1,16 @@
+# compiler-rs/fer/Cargo.toml
+[package]
+name = "fer"
+version.workspace = true
+edition.workspace = true
+description = "Fer compiler driver and interpreter CLI."
+
+[dependencies]
+analysis = { path = "../analysis" }
+diagnostics = { path = "../diagnostics" }
+infra = { workspace = true }
+ir = { workspace = true }
+query = { workspace = true }
+runtime = { path = "../runtime" }
+syntax = { workspace = true }
+vfs = { workspace = true }

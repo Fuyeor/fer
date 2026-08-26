@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use infra::{Diagnostic, Span};
+use infra::{Diagnostic, DiagnosticValue, MessageId, Span};
 use syntax::cst::{CstNode, NodeId, NodeKind};
 use vfs::FileId;
 
@@ -76,8 +76,10 @@ impl<'a> LoweringContext<'a> {
 
     /// Record a lowering diagnostic with a stable kebab-case code.
     pub(crate) fn report(&mut self, code: &'static str, message: String, span: Span) {
-        self.diagnostics
-            .push(Diagnostic::error(code, message, span));
+        self.diagnostics.push(
+            Diagnostic::error(code, MessageId::new("ir.lowering-error"), span)
+                .with_arg("message", DiagnosticValue::Text(message)),
+        );
     }
 
     /// Allocate a placeholder node for an unsupported or malformed CST item.

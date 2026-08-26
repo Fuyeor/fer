@@ -1,7 +1,7 @@
 // compiler-rs/fon/src/lib.rs
 
 use fon_parser::{Diagnostic as FonDiagnostic, ParseResult};
-use infra::{Diagnostic, DiagnosticBag, Severity, Span};
+use infra::{Diagnostic, DiagnosticBag, DiagnosticValue, MessageId, Severity, Span};
 use vfs::{FileId, SourceMap};
 
 pub mod query;
@@ -50,9 +50,14 @@ fn to_fer_diagnostic(file_id: FileId, diagnostic: &FonDiagnostic) -> Diagnostic 
     Diagnostic::new(
         Severity::Error,
         map_code(diagnostic.code.as_str()),
-        format_message(diagnostic),
+        MessageId::new("fon.parser-error"),
         Span::new(diagnostic.span.start as usize, diagnostic.span.end as usize),
     )
+    .with_arg(
+        "source_code",
+        DiagnosticValue::Text(diagnostic.code.clone()),
+    )
+    .with_arg("message", DiagnosticValue::Text(diagnostic.message.clone()))
 }
 
 /// Convert FON resolution diagnostics into Fer's diagnostic collector.
@@ -61,12 +66,19 @@ pub fn report_resolution_diagnostics(
     diagnostics: &mut DiagnosticBag,
 ) {
     for diagnostic in &resolved.diagnostics {
-        diagnostics.add(Diagnostic::new(
-            Severity::Error,
-            map_code(diagnostic.code.as_str()),
-            format_message(diagnostic),
-            Span::new(diagnostic.span.start as usize, diagnostic.span.end as usize),
-        ));
+        diagnostics.add(
+            Diagnostic::new(
+                Severity::Error,
+                map_code(diagnostic.code.as_str()),
+                MessageId::new("fon.resolution-error"),
+                Span::new(diagnostic.span.start as usize, diagnostic.span.end as usize),
+            )
+            .with_arg(
+                "source_code",
+                DiagnosticValue::Text(diagnostic.code.clone()),
+            )
+            .with_arg("message", DiagnosticValue::Text(diagnostic.message.clone())),
+        );
     }
 }
 
@@ -101,8 +113,4 @@ fn map_code(code: &str) -> &'static str {
         "E1003" => "fon-invalid-type",
         _ => "fon-parse-error",
     }
-}
-
-fn format_message(diagnostic: &FonDiagnostic) -> String {
-    format!("[{}] {}", diagnostic.code, diagnostic.message)
 }

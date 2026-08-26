@@ -1,26 +1,34 @@
 // infra/tests/diag_tests.rs
-use infra::{Diagnostic, DiagnosticBag, Severity, Span};
+use infra::{Diagnostic, DiagnosticBag, MessageId, Severity, Span};
 
 // ---- Diagnostic ----
 
 #[test]
 fn creates_error_diagnostic() {
     let span = Span::new(0, 1);
-    let diag = Diagnostic::error("unexpected-token", "something went wrong".into(), span);
+    let diag = Diagnostic::error(
+        "unexpected-token",
+        MessageId::new("syntax.unexpected-token"),
+        span,
+    );
     assert_eq!(diag.severity, Severity::Error);
     assert_eq!(diag.code, "unexpected-token");
-    assert_eq!(diag.message, "something went wrong");
-    assert_eq!(diag.span, span);
+    assert_eq!(diag.message_id, MessageId::new("syntax.unexpected-token"));
+    assert_eq!(diag.primary, span);
 }
 
 #[test]
 fn creates_warning_and_note() {
     let span = Span::dummy();
-    let warn = Diagnostic::warning("deprecated-syntax", "old syntax used".into(), span);
+    let warn = Diagnostic::warning(
+        "deprecated-syntax",
+        MessageId::new("syntax.deprecated-syntax"),
+        span,
+    );
     assert_eq!(warn.severity, Severity::Warning);
     assert_eq!(warn.code, "deprecated-syntax");
 
-    let note = Diagnostic::note("suggestion", "consider using new syntax".into(), span);
+    let note = Diagnostic::note("suggestion", MessageId::new("syntax.suggestion"), span);
     assert_eq!(note.severity, Severity::Note);
     assert_eq!(note.code, "suggestion");
 }
@@ -45,7 +53,7 @@ fn adding_error_makes_bag_report_error() {
     let mut bag = DiagnosticBag::new();
     bag.add(Diagnostic::error(
         "unexpected-char",
-        "fail".into(),
+        MessageId::new("syntax.unexpected-char"),
         Span::dummy(),
     ));
     assert!(bag.has_errors());
@@ -55,8 +63,16 @@ fn adding_error_makes_bag_report_error() {
 #[test]
 fn bag_preserves_insertion_order() {
     let mut bag = DiagnosticBag::new();
-    let first = Diagnostic::error("parse-error", "first".into(), Span::new(0, 1));
-    let second = Diagnostic::warning("unused-import", "second".into(), Span::new(2, 3));
+    let first = Diagnostic::error(
+        "parse-error",
+        MessageId::new("syntax.parse-error"),
+        Span::new(0, 1),
+    );
+    let second = Diagnostic::warning(
+        "unused-import",
+        MessageId::new("syntax.unused-import"),
+        Span::new(2, 3),
+    );
     bag.add(first.clone());
     bag.add(second.clone());
 
@@ -70,7 +86,7 @@ fn into_diagnostics_consumes_bag() {
     let mut bag = DiagnosticBag::new();
     bag.add(Diagnostic::note(
         "helpful-hint",
-        "note".into(),
+        MessageId::new("syntax.helpful-hint"),
         Span::dummy(),
     ));
     let diags = bag.into_diagnostics();
@@ -82,17 +98,17 @@ fn multiple_severities_are_counted_separately() {
     let mut bag = DiagnosticBag::new();
     bag.add(Diagnostic::error(
         "type-mismatch",
-        "e".into(),
+        MessageId::new("analysis.type-mismatch"),
         Span::dummy(),
     ));
     bag.add(Diagnostic::error(
         "missing-field",
-        "e".into(),
+        MessageId::new("analysis.missing-field"),
         Span::dummy(),
     ));
     bag.add(Diagnostic::warning(
         "unreachable-code",
-        "w".into(),
+        MessageId::new("analysis.unreachable-code"),
         Span::dummy(),
     ));
     assert_eq!(bag.count(Severity::Error), 2);

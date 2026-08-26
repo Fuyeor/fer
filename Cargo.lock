@@ -37,6 +37,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "diagnostics"
+version = "0.0.0"
+dependencies = [
+ "fon-parser",
+ "infra",
+]
+
+[[package]]
 name = "encode_unicode"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -57,6 +65,20 @@ name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
+
+[[package]]
+name = "fer"
+version = "0.0.0"
+dependencies = [
+ "analysis",
+ "diagnostics",
+ "infra",
+ "ir",
+ "query",
+ "runtime",
+ "syntax",
+ "vfs",
+]
 
 [[package]]
 name = "fon"
@@ -161,6 +183,17 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
+
+[[package]]
+name = "runtime"
+version = "0.0.0"
+dependencies = [
+ "analysis",
+ "infra",
+ "ir",
+ "syntax",
+ "vfs",
+]
 
 [[package]]
 name = "rustix"

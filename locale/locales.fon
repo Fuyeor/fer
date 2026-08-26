@@ -1,0 +1,81 @@
+// locale/locales.fon
+
+analysis = {
+  undefined-name = {
+    en = `cannot resolve name {name}`
+    zh-hans = `无法解析名称 {name}`
+  }
+  duplicate-definition = {
+    en = `name {name} is already defined in this scope`
+    zh-hans = `名称 {name} 已在此作用域中定义`
+  }
+  duplicate-type-definition = {
+    en = `type name {name} is already defined in this scope`
+    zh-hans = `类型名称 {name} 已在此作用域中定义`
+  }
+  invalid-resolution-reference = {
+    en = `resolution encountered an invalid HIR reference`
+    zh-hans = `名称解析遇到了无效的 HIR 引用`
+  }
+  invalid-type-reference = {
+    en = `type analysis encountered an invalid HIR reference`
+    zh-hans = `类型分析遇到了无效的 HIR 引用`
+  }
+  type-mismatch = {
+    en = `expected {expected}, found {found}`
+    zh-hans = `期望类型为 {expected}，但实际找到了 {found}`
+    desc = {
+      en = `this expression has type {found}`
+      zh-hans = `此表达式的类型为 {found}`
+    }
+  }
+  unknown-type = {
+    en = `cannot resolve type {name}`
+    zh-hans = `无法解析类型 {name}`
+  }
+  invalid-type-operation = {
+    en = `operator {operator} is not defined for type {found}`
+    zh-hans = `类型 {found} 不支持运算符 {operator}`
+  }
+  invalid-call = {
+    en = `cannot call a value of type {found}`
+    zh-hans = `不能调用类型为 {found} 的值`
+  }
+  wrong-argument-count = {
+    en = `expected {expected} arguments, found {found}`
+    zh-hans = `期望 {expected} 个参数，但实际找到了 {found} 个`
+  }
+  non-boolean-condition = {
+    en = `expected a boolean condition, found {found}`
+    zh-hans = `期望布尔条件，但实际找到了 {found}`
+  }
+  cyclic-type-dependency = {
+    en = `type depends on itself through {name}`
+    zh-hans = `类型通过 {name} 依赖自身`
+  }
+}
+
+syntax = {
+  parse-error = {
+    en = `{message}`
+    zh-hans = `{message}`
+  }
+}
+
+ir = {
+  lowering-error = {
+    en = `{message}`
+    zh-hans = `{message}`
+  }
+}
+
+fon = {
+  parser-error = {
+    en = `FON parser {source_code}: {message}`
+    zh-hans = `FON 解析器 {source_code}：{message}`
+  }
+  resolution-error = {
+    en = `FON resolver {source_code}: {message}`
+    zh-hans = `FON 解析器 {source_code}：{message}`
+  }
+}
