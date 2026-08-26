@@ -58,6 +58,7 @@ impl<'a> Resolver<'a> {
         for item_id in items {
             self.resolve_item(item_id, module_scope);
         }
+        self.resolve_body(self.hir.module_body, module_scope);
         ResolutionTable::from_parts(
             self.hir.file_id,
             self.expr_targets,

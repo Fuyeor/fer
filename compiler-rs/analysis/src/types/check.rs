@@ -90,6 +90,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        self.infer_body(self.hir.module_body, None);
         for (index, definition) in self.resolution.definitions.iter().enumerate() {
             self.definition_types[index] = Some(self.target_type(definition.target));
         }

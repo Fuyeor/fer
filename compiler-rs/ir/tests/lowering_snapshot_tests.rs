@@ -27,6 +27,20 @@ fn lower_source(source: &str) -> ir::hir::HirFile {
 }
 
 #[test]
+fn lower_module_body_preserves_top_level_expression_order() {
+    let hir = lower_source("answer = 40 + 2\nanswer\nanswer + 1");
+    assert!(hir.diagnostics.is_empty());
+
+    let body = hir
+        .arena
+        .body(hir.module_body)
+        .expect("module body must be present");
+    assert_eq!(body.statements.len(), 2);
+    assert!(matches!(body.statements[0], ir::hir::Stmt::Expr { .. }));
+    assert!(matches!(body.statements[1], ir::hir::Stmt::Expr { .. }));
+}
+
+#[test]
 fn rejects_invalid_cst_root_without_panicking() {
     let hir = lower_file(&CstFile {
         file_id: FileId(0),
