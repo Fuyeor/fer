@@ -1,16 +1,10 @@
 // examples/example.fer
 score = 85
 
-Status = enum {
-  nice
-  pass
-  failed
-}
-
 result = score {
-  >= 90 { Status.nice }
-  >= 60 { Status.pass }
-  { Status.failed }
+  >= 90 { `nice` }
+  >= 60 { `pass` }
+  { `failed` }
 }
 
 print(`score is {score}, result is {result}`)

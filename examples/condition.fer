@@ -13,7 +13,6 @@ uuid4 = `8dd24bce-89c0-41e1-bd2a-4a02ae3735cc`
 print(uuid4 {
   `UUID` { `It equals the string "UUID"` }
   contains `UUID` { `It contains the string "UUID"` }
-  matches /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i { `It is a UUID` }
   { `No match` }
 })
 
